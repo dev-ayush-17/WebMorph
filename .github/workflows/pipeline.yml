@@ -1,0 +1,69 @@
+name: Undying Scraper — Nightly Pipeline
+
+on:
+  # Nightly at 02:00 UTC
+  schedule:
+    - cron: '0 2 * * *'
+
+  # Manual trigger for testing without waiting for the cron
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Set to "true" to skip Supabase writes (uses mock only)'
+        required: false
+        default: 'false'
+
+jobs:
+  run-pipeline:
+    name: Collect → Heal-check → Persist
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Setup Node.js ─────────────────────────────────────────────────────
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # ── 3. Install root dependencies ─────────────────────────────────────────
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 4. Run the pipeline ───────────────────────────────────────────────────
+      # Secrets are pulled from GitHub's secret store.
+      # To add them: Repository → Settings → Secrets and variables → Actions → New secret
+      #   Required: SUPABASE_URL, SUPABASE_ANON_KEY
+      #   Optional: DISCORD_WEBHOOK_URL (leave unset to disable Discord alerts)
+      #   Future:   BRIGHTDATA_COLLECTOR_ID (not needed until v0.2)
+      - name: Run pipeline
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY:         ${{ secrets.SUPABASE_ANON_KEY }}
+          DISCORD_WEBHOOK_URL:       ${{ secrets.DISCORD_WEBHOOK_URL }}
+          BRIGHTDATA_COLLECTOR_ID:   ${{ secrets.BRIGHTDATA_COLLECTOR_ID }}
+          # Propagate manual dry_run input if set
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: node scripts/run-pipeline.js
+
+      # ── 5. Upload run log as an artifact (useful for debugging) ───────────────
+      # Note: this step always runs so we capture logs even on failure
+      - name: Save run summary
+        if: always()
+        run: |
+          echo "Run completed at $(date -u)" >> run-summary.txt
+          echo "Triggered by: ${{ github.event_name }}" >> run-summary.txt
+          echo "Actor: ${{ github.actor }}" >> run-summary.txt
+
+      - name: Upload run summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-summary-${{ github.run_number }}
+          path: run-summary.txt
+          retention-days: 30
