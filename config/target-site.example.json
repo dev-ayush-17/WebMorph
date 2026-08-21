@@ -1,0 +1,24 @@
+{
+  "_comment": "This file documents the target site configuration for Undying Scraper.",
+  "_comment2": "Fill in all fields once you have chosen a target website.",
+  "_comment3": "After filling this in, run the setup steps in docs/how-to-add-target-site.md",
+
+  "target_url": "[PENDING TARGET SITE SELECTION]",
+
+  "field_description": "[PENDING TARGET SITE SELECTION — example when ready: 'product name as string, price as number without currency symbol, currency code as 3-letter string, in_stock as boolean, direct product URL as string']",
+
+  "site_notes": {
+    "price_format": "[PENDING — e.g. 'prices shown with $ prefix, strip before parsing' or 'price shown as integer cents, divide by 100']",
+    "stock_format": "[PENDING — e.g. 'stock shown as Add to Cart / Out of Stock text, map to boolean' or 'in_stock is a boolean field']",
+    "pagination": "[PENDING — e.g. 'single page, ~30 products per run' or 'paginated, collector handles first page only']",
+    "auth_required": false,
+    "other_notes": "[PENDING]"
+  },
+
+  "collector_setup": {
+    "status": "PENDING — run bdata scraper create once target URL is chosen",
+    "command_to_run": "bdata scraper create \"[TARGET_URL]\" \"[FIELD_DESCRIPTION]\"",
+    "resulting_collector_id": "[PASTE HERE AFTER RUNNING bdata scraper create]",
+    "env_var_to_set": "BRIGHTDATA_COLLECTOR_ID=[collector id from above]"
+  }
+}
