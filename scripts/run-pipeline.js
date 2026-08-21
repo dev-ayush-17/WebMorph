@@ -166,7 +166,7 @@ async function main() {
 
   // 3. Heal-check
   console.log('[pipeline] → Running heal-check...');
-  const { healthy, products, healEvents } = checkResult(rawResult);
+  const { healthy, products, healEvents } = await checkResult(rawResult);
 
   // 4. Persist products (only if there are valid ones)
   if (products.length > 0) {
