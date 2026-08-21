@@ -1,23 +1,17 @@
 /**
- * src/heal-check.js  (v0.2 — real heal-trigger integration)
+ * src/heal-check.js  (v0.3 — richer heal events, retry/backoff, typed errors)
  *
- * Heal-detection and heal-trigger logic for Undying Scraper.
- *
- * WHAT CHANGED FROM v0.1:
- *   Previously: only logged a "would-heal" event in all cases.
- *   Now:
- *     - MOCK mode  → preserves the old "would-heal" simulation exactly (v0.1 regression safety)
- *     - LIVE mode  → actually calls healCollector() from the Bright Data wrapper,
- *                    then retries the run once after healing
+ * WHAT CHANGED FROM v0.2:
+ *   - heal events now carry: attempt_number, heal_method, error_type, duration_ms
+ *   - live-mode heal uses withRetry() — up to MAX_RETRIES attempts with backoff
+ *   - error_type is derived from the BrightDataError class hierarchy
+ *   - validateProduct() and all mock-mode "would-heal" paths are UNCHANGED
  *
  * EXPORTS:
- *   checkResult(collectorResult, options?) -> { healthy, products, healEvents }
- *     options._runCollector  — injectable for testing (avoids real re-run)
- *     options._healCollector — injectable for testing (avoids real heal call)
- *
- * DEPENDENCIES:
- *   src/brightdata/collector-registry.js (feat/collector-lifecycle-management PR)
- *   src/brightdata/client.js             (feat/brightdata-cli-wrapper PR)
+ *   checkResult(collectorResult, options?) -> Promise<{ healthy, products, healEvents }>
+ *     options._runCollector  — injectable for testing
+ *     options._healCollector — injectable for testing
+ *     options._noDelay       — skip retry delays in tests
  */
 
 'use strict';
@@ -26,10 +20,13 @@ const registry = require('./brightdata/collector-registry');
 const bdataClient = require('./brightdata/client');
 const {
   BrightDataError,
+  CliNotAuthenticatedError,
+  CollectorNotFoundError,
   ScrapeReturnedEmptyError,
 } = require('./brightdata/errors');
+const { withRetry, MAX_RETRIES } = require('./retry');
 
-// ─── Data contract definition (unchanged from v0.1) ───────────────────────────
+// ─── Data contract definition (unchanged) ─────────────────────────────────────
 
 const REQUIRED_FIELDS = [
   { name: 'product_name', type: 'string'  },
@@ -40,12 +37,31 @@ const REQUIRED_FIELDS = [
   { name: 'scraped_at',   type: 'string'  },
 ];
 
-// ─── Helpers (unchanged from v0.1) ────────────────────────────────────────────
+// ─── Error classification ─────────────────────────────────────────────────────
 
 /**
- * Validate a single product object against the data contract.
- * Returns an array of human-readable issue strings (empty = valid).
+ * Derive the error_type string from a BrightDataError (or any error).
+ * Matches the values documented in supabase/schema.sql.
  */
+function classifyErrorType(description) {
+  const d = description.toLowerCase();
+  if (d.includes('empty array'))      return 'empty_result';
+  if (d.includes('missing field'))    return 'missing_fields';
+  if (d.includes('validation error')) return 'missing_fields';
+  if (d.includes('expected') && d.includes('got')) return 'type_mismatch';
+  return 'unknown';
+}
+
+function classifyErrorTypeFromException(err) {
+  if (err instanceof ScrapeReturnedEmptyError)  return 'empty_result';
+  if (err instanceof CliNotAuthenticatedError)  return 'cli_auth';
+  if (err instanceof CollectorNotFoundError)    return 'collector_gone';
+  if (err instanceof BrightDataError)           return 'unknown';
+  return 'unknown';
+}
+
+// ─── Validation helper (unchanged) ───────────────────────────────────────────
+
 function validateProduct(product, index) {
   const issues = [];
   for (const field of REQUIRED_FIELDS) {
@@ -61,24 +77,26 @@ function validateProduct(product, index) {
   return issues;
 }
 
-// ─── Mock-mode "would-heal" (unchanged from v0.1) ────────────────────────────
+// ─── Mock-mode "would-heal" (v0.1/v0.2 compatible) ───────────────────────────
 
 /**
- * Trigger a would-heal event in mock mode.
- * This is IDENTICAL to v0.1 — preserved for regression safety.
- * Does NOT make any real bdata call.
+ * Build a rich heal event for mock mode.
+ * Renders the same ASCII box as before, and now returns the extended object.
  */
-function triggerWouldHeal(description) {
+function triggerWouldHeal(description, attemptNumber = 1) {
   const timestamp = new Date().toISOString();
+  const errorType = classifyErrorType(description);
 
   console.warn('');
   console.warn('┌─────────────────────────────────────────────────────────┐');
   console.warn('│  🚨 WOULD-HEAL EVENT DETECTED (mock mode)              │');
   console.warn('├─────────────────────────────────────────────────────────┤');
-  console.warn(`│  Time:  ${timestamp.padEnd(48)} │`);
-  console.warn(`│  Issue: ${description.substring(0, 48).padEnd(48)} │`);
-  if (description.length > 48) {
-    console.warn(`│         ${description.substring(48, 96).padEnd(48)} │`);
+  console.warn(`│  Time:    ${timestamp.padEnd(46)} │`);
+  console.warn(`│  Attempt: ${String(attemptNumber).padEnd(46)} │`);
+  console.warn(`│  Type:    ${errorType.padEnd(46)} │`);
+  console.warn(`│  Issue:   ${description.substring(0, 46).padEnd(46)} │`);
+  if (description.length > 46) {
+    console.warn(`│           ${description.substring(46, 92).padEnd(46)} │`);
   }
   console.warn('├─────────────────────────────────────────────────────────┤');
   console.warn('│  [No real heal call — running in mock mode]             │');
@@ -86,88 +104,111 @@ function triggerWouldHeal(description) {
   console.warn('└─────────────────────────────────────────────────────────┘');
   console.warn('');
 
-  return { timestamp, description, resolved: false };
+  return {
+    timestamp,
+    description,
+    resolved:       false,
+    attempt_number: attemptNumber,
+    heal_method:    'simulated',
+    error_type:     errorType,
+    duration_ms:    0,
+  };
 }
 
-// ─── Live-mode real heal trigger ──────────────────────────────────────────────
+// ─── Live-mode real heal trigger (with retry) ─────────────────────────────────
 
 /**
- * Trigger a real heal via the Bright Data CLI in live mode.
+ * triggerRealHeal(description, errorType, options)
  *
- * Flow:
- *   1. Call healCollector(id, whatBroke)
- *   2. Wait for it to complete (or fail gracefully)
- *   3. Retry runCollector() once after healing
- *   4. Validate the retry result
- *
- * @param {string} description        - Human-readable description of what broke
- * @param {{ _runCollector?: Function, _healCollector?: Function }} [overrides]
- *   Injectable overrides for testing — avoids real CLI calls in unit tests.
- * @returns {Promise<{ healEvent: object, retryProducts: Array }>}
+ * Calls healCollector() with retry/backoff. On each attempt, records timing.
+ * Returns the final heal event object (resolved or not) plus any retried products.
  */
-async function triggerRealHeal(description, overrides = {}) {
-  const timestamp = new Date().toISOString();
+async function triggerRealHeal(description, errorType, options = {}) {
   const collectorId = registry.getCollectorId();
   const targetUrl   = registry.getTargetUrl();
-
-  // Resolve the functions — use injected overrides in tests, real ones in prod
-  const healFn = overrides._healCollector ?? bdataClient.healCollector;
-  const runFn  = overrides._runCollector  ?? bdataClient.runCollector;
+  const healFn = options._healCollector ?? bdataClient.healCollector;
+  const runFn  = options._runCollector  ?? bdataClient.runCollector;
+  const noDelay = options._noDelay ?? false;
 
   console.log('');
   console.log('┌─────────────────────────────────────────────────────────┐');
   console.log('│  🔧 HEAL EVENT — TRIGGERING REAL BRIGHT DATA HEAL      │');
   console.log('├─────────────────────────────────────────────────────────┤');
   console.log(`│  Collector : ${collectorId.padEnd(44)} │`);
-  console.log(`│  Time      : ${timestamp.padEnd(44)} │`);
-  console.log(`│  Issue     : ${description.substring(0, 44).padEnd(44)} │`);
+  console.log(`│  Error     : ${errorType.padEnd(44)} │`);
+  console.log(`│  Max tries : ${String(MAX_RETRIES).padEnd(44)} │`);
   console.log('└─────────────────────────────────────────────────────────┘');
   console.log('');
 
-  // ── Step 1: Trigger the heal ────────────────────────────────────────────────
+  const runStartMs = Date.now();
+  let lastAttemptNumber = 1;
+  let lastError = null;
   let healSucceeded = false;
-  let healError = null;
 
   try {
-    await healFn(collectorId, description);
+    await withRetry(
+      async (attempt) => {
+        lastAttemptNumber = attempt;
+        const attemptStartMs = Date.now();
+        console.log(`[heal-check] → Heal attempt ${attempt}/${MAX_RETRIES}...`);
+        try {
+          await healFn(collectorId, description);
+          const ms = Date.now() - attemptStartMs;
+          console.log(`[heal-check] ✓  Heal attempt ${attempt} succeeded (${ms}ms)`);
+        } catch (err) {
+          const ms = Date.now() - attemptStartMs;
+          console.error(`[heal-check] ✗  Heal attempt ${attempt} failed (${ms}ms): ${err.message}`);
+          throw err;
+        }
+      },
+      {
+        maxRetries: MAX_RETRIES,
+        noDelay,
+        onRetry: (attempt, err) => {
+          console.log(`[heal-check]    Retrying heal (attempt ${attempt + 1} of ${MAX_RETRIES})...`);
+        },
+      }
+    );
     healSucceeded = true;
-    console.log('[heal-check] ✓  Heal triggered successfully');
   } catch (err) {
-    healError = err;
-    const errType = err instanceof BrightDataError ? err.name : 'Error';
-    console.error(`[heal-check] ✗  Heal call failed (${errType}): ${err.message}`);
+    lastError = err;
+    const derivedType = classifyErrorTypeFromException(err);
+    console.error(`[heal-check] ✗  All ${MAX_RETRIES} heal attempt(s) exhausted. Last error: ${err.message}`);
+    // If it's a CLI auth error, no point retrying — log clearly
+    if (err instanceof CliNotAuthenticatedError) {
+      console.error('[heal-check]    Authentication failure — human intervention required (bdata login)');
+    }
   }
 
-  // ── Step 2: Retry the run (only if heal succeeded) ──────────────────────────
+  // Retry the scrape run after successful heal
   let retryProducts = [];
-
   if (healSucceeded) {
     console.log('[heal-check] → Retrying collector run after heal...');
     try {
       const retryResult = await runFn(collectorId, targetUrl);
-      // Validate the retry result using the same validation logic
-      const validItems = [];
       for (let i = 0; i < retryResult.length; i++) {
         if (validateProduct(retryResult[i], i).length === 0) {
-          validItems.push(retryResult[i]);
+          retryProducts.push(retryResult[i]);
         }
       }
-      retryProducts = validItems;
       console.log(`[heal-check] ✓  Retry returned ${retryProducts.length} valid products`);
     } catch (retryErr) {
-      // ScrapeReturnedEmptyError and others — log but don't crash
-      const errType = retryErr instanceof BrightDataError ? retryErr.name : 'Error';
-      console.error(`[heal-check] ✗  Retry after heal also failed (${errType}): ${retryErr.message}`);
+      console.error(`[heal-check] ✗  Retry run after heal also failed: ${retryErr.message}`);
     }
   }
 
-  // ── Step 3: Build the heal event object for Supabase ────────────────────────
+  const totalDurationMs = Date.now() - runStartMs;
+
   const healEvent = {
-    timestamp,
-    description: healError
-      ? `${description} | Heal failed: ${healError.message}`
+    timestamp:      new Date().toISOString(),
+    description:    lastError
+      ? `${description} | All heal attempts failed: ${lastError.message}`
       : description,
-    resolved: retryProducts.length > 0,  // resolved only if retry produced valid data
+    resolved:       retryProducts.length > 0,
+    attempt_number: lastAttemptNumber,
+    heal_method:    'real',
+    error_type:     lastError ? classifyErrorTypeFromException(lastError) : errorType,
+    duration_ms:    totalDurationMs,
   };
 
   return { healEvent, retryProducts };
@@ -178,62 +219,43 @@ async function triggerRealHeal(description, overrides = {}) {
 /**
  * checkResult(collectorResult, options?)
  *
- * Validates a raw collector result against the data contract.
- * In live mode, triggers a real Bright Data heal and one retry on failure.
- * In mock mode, preserves v0.1 "would-heal" simulation exactly.
+ * Validates a raw collector result. Routes to mock or real heal path.
  *
- * @param {any}    collectorResult - Raw output from runCollector()
- * @param {{ _runCollector?: Function, _healCollector?: Function }} [options]
- *   Injected overrides for unit tests (avoids real CLI calls).
+ * @param {any} collectorResult
+ * @param {{ _runCollector?, _healCollector?, _noDelay? }} [options]
  * @returns {Promise<{ healthy: boolean, products: Array, healEvents: Array }>}
- *   - healthy:    true if all (or retried) products passed validation
- *   - products:   array of valid products
- *   - healEvents: array of { timestamp, description, resolved } for Supabase
  */
 async function checkResult(collectorResult, options = {}) {
   const live = registry.isLive();
 
-  // ── Check 1: must be an array ─────────────────────────────────────────────
+  // ── Non-array ─────────────────────────────────────────────────────────────
   if (!Array.isArray(collectorResult)) {
     const description = `Collector returned non-array (got ${typeof collectorResult})`;
     if (!live) {
-      const event = triggerWouldHeal(description);
-      return { healthy: false, products: [], healEvents: [event] };
+      return { healthy: false, products: [], healEvents: [triggerWouldHeal(description)] };
     }
-    const { healEvent, retryProducts } = await triggerRealHeal(description, options);
-    return {
-      healthy: retryProducts.length > 0,
-      products: retryProducts,
-      healEvents: [healEvent],
-    };
+    const { healEvent, retryProducts } = await triggerRealHeal(description, 'unknown', options);
+    return { healthy: retryProducts.length > 0, products: retryProducts, healEvents: [healEvent] };
   }
 
-  // ── Check 2: must not be empty ────────────────────────────────────────────
+  // ── Empty array ───────────────────────────────────────────────────────────
   if (collectorResult.length === 0) {
     const description = 'Collector returned empty array — possible scraper extraction failure';
     if (!live) {
-      const event = triggerWouldHeal(description);
-      return { healthy: false, products: [], healEvents: [event] };
+      return { healthy: false, products: [], healEvents: [triggerWouldHeal(description)] };
     }
-    const { healEvent, retryProducts } = await triggerRealHeal(description, options);
-    return {
-      healthy: retryProducts.length > 0,
-      products: retryProducts,
-      healEvents: [healEvent],
-    };
+    const { healEvent, retryProducts } = await triggerRealHeal(description, 'empty_result', options);
+    return { healthy: retryProducts.length > 0, products: retryProducts, healEvents: [healEvent] };
   }
 
-  // ── Check 3: validate each product against the data contract ──────────────
-  const allIssues = [];
+  // ── Field validation ──────────────────────────────────────────────────────
+  const allIssues   = [];
   const validProducts = [];
 
   for (let i = 0; i < collectorResult.length; i++) {
     const issues = validateProduct(collectorResult[i], i);
-    if (issues.length > 0) {
-      allIssues.push(...issues);
-    } else {
-      validProducts.push(collectorResult[i]);
-    }
+    if (issues.length > 0) allIssues.push(...issues);
+    else validProducts.push(collectorResult[i]);
   }
 
   if (allIssues.length > 0) {
@@ -242,36 +264,31 @@ async function checkResult(collectorResult, options = {}) {
       allIssues.slice(0, 3).join('; ') +
       (allIssues.length > 3 ? ` ... and ${allIssues.length - 3} more` : '');
 
+    const errorType = summary.toLowerCase().includes('missing field') ? 'missing_fields' : 'type_mismatch';
+
     if (!live) {
-      // Mock mode: v0.1 behavior exactly — pass through valid items, log would-heal
       const event = triggerWouldHeal(summary);
       const healthy = validProducts.length > 0;
       if (healthy) {
         console.log(
-          `[heal-check] ⚠  Partial result: ${validProducts.length}/${collectorResult.length} products are valid — passing through valid items`
+          `[heal-check] ⚠  Partial result: ${validProducts.length}/${collectorResult.length} ` +
+          `products valid — passing through valid items`
         );
       }
       return { healthy, products: validProducts, healEvents: [event] };
     }
 
-    // Live mode: heal + retry
-    const { healEvent, retryProducts } = await triggerRealHeal(summary, options);
-
-    // Merge: valid items from original run + any valid items from retry
+    const { healEvent, retryProducts } = await triggerRealHeal(summary, errorType, options);
     const allValid = [...new Map(
       [...validProducts, ...retryProducts].map((p) => [p.product_url, p])
     ).values()];
 
     console.log(
-      `[heal-check] ⚠  Partial result: ${validProducts.length} valid from original + ` +
+      `[heal-check] ⚠  Partial: ${validProducts.length} from original + ` +
       `${retryProducts.length} from retry = ${allValid.length} total`
     );
 
-    return {
-      healthy: allValid.length > 0,
-      products: allValid,
-      healEvents: [healEvent],
-    };
+    return { healthy: allValid.length > 0, products: allValid, healEvents: [healEvent] };
   }
 
   // ── All good ──────────────────────────────────────────────────────────────
