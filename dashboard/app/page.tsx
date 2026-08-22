@@ -1,30 +1,34 @@
 /**
- * dashboard/app/page.tsx
+ * dashboard/app/page.tsx  (v0.3)
  *
- * Main dashboard page — server component.
- * Fetches data from Supabase (or falls back to mock data) and renders:
- *  - Sidebar: run metadata + stats
- *  - Main area: product price table
- *  - Health timeline section below the table
+ * v0.3 additions:
+ *   - Imports getRunHistory() + RunHistory component
+ *   - Sidebar: price change summary + version bump to v0.3
+ *   - New "Run History" section at bottom of main area
+ *   - Source sidebar updated to reflect v0.2 integration status
  */
 
-import { getLatestProducts, getHealEvents, isConfigured } from '../lib/data';
+import { getLatestProducts, getHealEvents, getRunHistory, isConfigured } from '../lib/data';
 import ProductTable from './components/ProductTable';
 import HealthTimeline from './components/HealthTimeline';
+import RunHistory from './components/RunHistory';
 
-export const revalidate = 300; // Re-fetch every 5 minutes (ISR)
+export const revalidate = 300; // ISR: re-fetch every 5 minutes
 
 export default async function DashboardPage() {
-  const [products, healEvents] = await Promise.all([
+  const [products, healEvents, runs] = await Promise.all([
     getLatestProducts(),
     getHealEvents(),
+    getRunHistory(),
   ]);
 
   const configured = isConfigured();
-  const inStockCount = products.filter((p) => p.in_stock).length;
+  const inStockCount        = products.filter((p) => p.in_stock).length;
+  const priceChangedCount   = products.filter((p) => p.price_changed).length;
+  const stockChangedCount   = products.filter((p) => p.stock_changed).length;
   const healUnresolvedCount = healEvents.filter((e) => !e.resolved).length;
-  const lastScrapedAt = products[0]?.scraped_at ?? null;
-  const lastRunId = products[0]?.run_id ?? null;
+  const lastScrapedAt       = products[0]?.scraped_at ?? null;
+  const lastRunId           = products[0]?.run_id ?? null;
 
   return (
     <div className="page-shell">
@@ -34,7 +38,7 @@ export default async function DashboardPage() {
         <div className="brand">
           <div className="brand-icon" aria-hidden="true">🕷</div>
           <span className="brand-name">Undying Scraper</span>
-          <span className="brand-version">v0.1</span>
+          <span className="brand-version">v0.3</span>
         </div>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -81,6 +85,30 @@ export default async function DashboardPage() {
 
         <div className="divider" />
 
+        {/* v0.3: price/stock change summary */}
+        {(priceChangedCount > 0 || stockChangedCount > 0) && (
+          <>
+            <div>
+              <p className="sidebar-label">Changes (this run)</p>
+              <div className="stat-stack">
+                {priceChangedCount > 0 && (
+                  <div className="stat-item">
+                    <span className="stat-label">Price changes</span>
+                    <span className="stat-value accent">{priceChangedCount}</span>
+                  </div>
+                )}
+                {stockChangedCount > 0 && (
+                  <div className="stat-item">
+                    <span className="stat-label">Stock flips</span>
+                    <span className="stat-value accent">{stockChangedCount}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="divider" />
+          </>
+        )}
+
         <div>
           <p className="sidebar-label">Last run</p>
           <div className="stat-stack">
@@ -114,11 +142,17 @@ export default async function DashboardPage() {
           <div className="stat-stack">
             <div className="stat-item">
               <span className="stat-label">Collector</span>
-              <span className="stat-sub mono" style={{ color: 'var(--amber-400)' }}>mock-source.js</span>
+              <span className="stat-sub mono" style={{ color: 'var(--amber-400)' }}>
+                {configured ? 'Bright Data (live)' : 'mock-source.js'}
+              </span>
             </div>
             <div className="stat-item">
               <span className="stat-label">Bright Data</span>
-              <span className="stat-sub">Pending v0.2</span>
+              <span className="stat-sub">{configured ? '✓ Connected' : 'Pending target site'}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Run history</span>
+              <span className="stat-sub">{runs.length} run{runs.length !== 1 ? 's' : ''} recorded</span>
             </div>
           </div>
         </div>
@@ -161,6 +195,19 @@ export default async function DashboardPage() {
             )}
           </div>
           <HealthTimeline events={healEvents} />
+        </section>
+
+        {/* Run history (new in v0.3) */}
+        <section aria-labelledby="runs-heading">
+          <div className="section-header">
+            <h2 id="runs-heading" className="section-title">
+              Run History
+            </h2>
+            {runs.length > 0 && (
+              <span className="section-count">{runs.length} runs</span>
+            )}
+          </div>
+          <RunHistory runs={runs} />
         </section>
       </main>
 

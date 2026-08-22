@@ -1,16 +1,27 @@
 'use client';
 
 /**
- * HealthTimeline.tsx
+ * HealthTimeline.tsx  (v0.3)
  *
- * Renders a vertical timeline of heal events.
- * Each event shows: timestamp, description, resolved status.
- * Empty state shown if no events exist yet.
+ * v0.3 additions:
+ *   - Shows attempt_number, heal_method, error_type, duration_ms per event
+ *   - Visually distinct states: healed (green), unresolved (red), simulated (amber)
+ *   - Method badge: "real" vs "simulated" with distinct colors
+ *   - Error type chip with semantic label
  */
 
 import type { HealEvent } from '../../lib/data';
 
 type Props = { events: HealEvent[] };
+
+const ERROR_TYPE_LABELS: Record<string, string> = {
+  empty_result:   'Empty result',
+  missing_fields: 'Missing fields',
+  type_mismatch:  'Type mismatch',
+  cli_auth:       'CLI auth',
+  collector_gone: 'Collector gone',
+  unknown:        'Unknown',
+};
 
 function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
@@ -32,6 +43,36 @@ function timeAgo(iso: string): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+function formatDuration(ms: number | null): string {
+  if (ms === null || ms === 0) return '—';
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function getCardClass(evt: HealEvent): string {
+  if (evt.heal_method === 'simulated') return 'simulated';
+  return evt.resolved ? 'resolved' : 'unresolved';
+}
+
+function StatusBadge({ evt }: { evt: HealEvent }) {
+  if (evt.heal_method === 'simulated') {
+    return (
+      <span className="status-badge mock" aria-label="Would-heal (mock mode)">
+        <span className="status-dot" /> would-heal
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`status-badge ${evt.resolved ? 'healthy' : 'degraded'}`}
+      aria-label={evt.resolved ? 'Healed and resolved' : 'Unresolved — heal failed or retry empty'}
+    >
+      <span className="status-dot" />
+      {evt.resolved ? 'healed' : 'unresolved'}
+    </span>
+  );
+}
+
 export default function HealthTimeline({ events }: Props) {
   if (events.length === 0) {
     return (
@@ -49,31 +90,59 @@ export default function HealthTimeline({ events }: Props) {
   return (
     <div className="timeline" role="feed" aria-label="Pipeline health events">
       {events.map((evt, i) => {
-        const isResolved = evt.resolved;
+        const cardClass = getCardClass(evt);
         return (
           <article
             key={evt.id}
             className="timeline-item"
             style={{ animationDelay: `${i * 40}ms` }}
-            aria-label={`Heal event: ${isResolved ? 'resolved' : 'unresolved'}`}
+            aria-label={`Heal event: ${cardClass}`}
           >
-            <div className={`timeline-dot ${isResolved ? 'resolved' : 'unresolved'}`} aria-hidden="true" />
-            <div className={`timeline-card ${isResolved ? 'resolved' : 'unresolved'}`}>
+            <div className={`timeline-dot ${cardClass}`} aria-hidden="true" />
+            <div className={`timeline-card ${cardClass}`}>
+
+              {/* ── Header row: status + time ──────────────────────────── */}
               <div className="timeline-meta">
-                <span
-                  className={`status-badge ${isResolved ? 'healthy' : 'degraded'}`}
-                  aria-label={isResolved ? 'Resolved' : 'Unresolved'}
+                <StatusBadge evt={evt} />
+                <time
+                  className="timeline-time"
+                  dateTime={evt.timestamp}
+                  title={formatTimestamp(evt.timestamp)}
                 >
-                  <span className="status-dot" />
-                  {isResolved ? 'resolved' : 'unresolved'}
-                </span>
-                <time className="timeline-time" dateTime={evt.timestamp} title={formatTimestamp(evt.timestamp)}>
                   {timeAgo(evt.timestamp)}
                 </time>
                 <span className="timeline-time">·</span>
                 <span className="timeline-time">{formatTimestamp(evt.timestamp)}</span>
               </div>
+
+              {/* ── Description ───────────────────────────────────────── */}
               <p className="timeline-desc">{evt.description}</p>
+
+              {/* ── Chips row: error_type, method, attempt, duration ──── */}
+              <div className="timeline-chips" aria-label="Heal event details">
+                <span
+                  className={`heal-chip error-type-${evt.error_type}`}
+                  title={`Error type: ${evt.error_type}`}
+                >
+                  {ERROR_TYPE_LABELS[evt.error_type] ?? evt.error_type}
+                </span>
+                <span
+                  className={`heal-chip method-${evt.heal_method}`}
+                  title={`Heal method: ${evt.heal_method}`}
+                >
+                  {evt.heal_method === 'real' ? '⚡ real heal' : '🔮 simulated'}
+                </span>
+                {(evt.attempt_number ?? 1) > 1 && (
+                  <span className="heal-chip attempt-retry" title="More than one heal attempt was made">
+                    attempt #{evt.attempt_number}
+                  </span>
+                )}
+                {evt.duration_ms !== null && evt.duration_ms > 0 && (
+                  <span className="heal-chip duration" title="Total time spent on this heal">
+                    ⏱ {formatDuration(evt.duration_ms)}
+                  </span>
+                )}
+              </div>
             </div>
           </article>
         );
