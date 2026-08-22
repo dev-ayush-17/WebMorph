@@ -29,6 +29,7 @@ const {
   ScrapeReturnedEmptyError,
   UnknownCliError,
 } = require('./errors');
+const { normalizeItems } = require('./normalize');
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -208,13 +209,16 @@ async function runCollector(collectorId, url, options = {}) {
   }
 
   // Normalise: the CLI may return { results: [...] } or a bare array
-  const items = Array.isArray(parsed) ? parsed : (parsed.results ?? []);
+  const rawItems = Array.isArray(parsed) ? parsed : (parsed.results ?? []);
 
-  if (items.length === 0) {
+  if (rawItems.length === 0) {
     throw new ScrapeReturnedEmptyError(collectorId);
   }
 
-  console.log(`[brightdata] ✓ Collector returned ${items.length} items`);
+  // Normalize field names/types into our data contract
+  const items = normalizeItems(rawItems);
+
+  console.log(`[brightdata] ✓ Collector returned ${items.length} items (normalized from ${rawItems.length} raw)`);
   return items;
 }
 
