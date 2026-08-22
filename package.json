@@ -6,6 +6,8 @@
   "scripts": {
     "pipeline": "node scripts/run-pipeline.js",
     "test": "node tests/brightdata-client.test.js",
+    "test:integration": "node tests/pipeline-integration.test.js",
+    "test:all": "node tests/brightdata-client.test.js && node tests/collector-registry.test.js && node tests/pipeline-integration.test.js",
     "test:mock": "node -e \"const m = require('./src/sources/mock-source'); console.log(JSON.stringify(m.generateMockProducts().slice(0,2), null, 2))\"",
     "test:heal": "node -e \"const h = require('./src/heal-check'); console.log(JSON.stringify(h.checkResult([]), null, 2))\""
   },
