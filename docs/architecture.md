@@ -1,8 +1,7 @@
-# Undying Scraper — Pipeline Architecture (v0.2)
+# Undying Scraper — Pipeline Architecture (v0.3)
 
-> **Updated for v0.2** — reflects the real Bright Data CLI integration, the
-> collector registry mode-switching, and the real heal-trigger loop.
-> v0.1 differences are noted inline.
+> **Updated for v0.3** — reflects diff detection, retry/backoff, structured run summaries,
+> richer heal events, and dashboard polish. v0.1/v0.2 differences are noted inline.
 
 ---
 
@@ -113,15 +112,19 @@
 
 ## What Changed from v0.1
 
-| Component | v0.1 | v0.2 |
-|---|---|---|
-| Mode switching | Manual code edit in `collector.js` | Automatic via `collector-registry.js` reading env vars |
-| Collector abstraction | `collector.js` had a TODO comment | `collector.js` now routes to real or mock based on registry |
-| Heal trigger | Always "would-heal" log, no real call | Real `bdata scraper heal` in live mode; "would-heal" in mock mode |
-| Heal retry | Not present | After healing, retries the run once; sets `resolved=true` if retry produces valid data |
-| Setup tooling | None | `scripts/setup-collector.js` creates collector + writes .env |
-| Target site config | Nothing | `config/target-site.example.json` + `docs/how-to-add-target-site.md` |
-| Tests | None | 20 unit tests for CLI wrapper and registry (all mock, no real CLI calls) |
+| Component | v0.1 | v0.2 | v0.3 |
+|---|---|---|---|
+| Mode switching | Manual code edit | Env-var registry | Unchanged |
+| Collector abstraction | TODO comment | Real CLI wrapper | Unchanged |
+| Heal trigger | Always "would-heal" | Real `bdata scraper heal` in live | Unchanged |
+| Heal retry | Not present | 1 attempt | `withRetry()` — max 2 attempts, linear backoff |
+| Heal event data | timestamp + description + resolved | +heal_method | +attempt_number, error_type, duration_ms |
+| Price diffing | Not present | Not present | `src/diff.js` — price_changed, stock_changed, previous_price |
+| Run records | Not present | Not present | `runs` table — structured summary JSON per run |
+| Pipeline output | Simple summary box | Async heal-check | Richer summary: diff breakdown, heal resolution |
+| Tests | None | 20 unit tests | +21 integration tests (41 total) |
+| Setup tooling | None | setup-collector.js | Unchanged |
+| Target site config | Nothing | example.json + walkthrough | Unchanged |
 
 ---
 
@@ -132,10 +135,13 @@
 | Bright Data CLI wrapper | ✅ Live-ready | Fully implemented, 15 unit tests |
 | Collector registry | ✅ Live-ready | Single source of truth for mode |
 | collector.js swap point | ✅ Live-ready | Routes automatically |
-| heal-check + real heal | ✅ Live-ready | Fires in live mode, simulates in mock |
-| Supabase schema + client | ✅ Live-ready | Unchanged from v0.1 |
-| GitHub Actions workflow | ✅ Live-ready | Needs BRIGHTDATA_COLLECTOR_ID + TARGET_URL secrets added |
-| Dashboard | ✅ Live-ready | Unchanged from v0.1; renders whatever Supabase has |
+| heal-check + real heal + retry | ✅ Live-ready | withRetry, max 2 attempts, richer events |
+| Price/stock diff detection | ✅ Live-ready | Works identically in mock and live |
+| Runs table + structured summary | ✅ Live-ready | Every pipeline execution logged |
+| Supabase schema | ✅ Live-ready | v0.3 extended, backwards-compatible upgrade path |
+| GitHub Actions workflow | ✅ Live-ready | Needs BRIGHTDATA_COLLECTOR_ID + TARGET_URL secrets |
+| Dashboard (all three sections) | ✅ Live-ready | Price deltas, heal chips, run history all render from real data |
+| Integration test suite | ✅ Live-ready | 41 tests, zero real credentials needed |
 | **Actual Bright Data collector** | ⏳ **PENDING** | Needs target site selection → `bdata scraper create` |
 | Target URL | ⏳ **PENDING** | One env var to set once site is chosen |
 
@@ -201,7 +207,9 @@ src/
 │   ├── collector-registry.js  Mode detection (LIVE vs MOCK) — single source of truth
 │   └── errors.js              Typed error classes for each CLI failure mode
 ├── collector.js               Swap point: routes to real or mock via registry
-├── heal-check.js              Validation + real heal trigger in live mode
+├── diff.js                    [NEW v0.3] Price/stock change detection
+├── heal-check.js              Validation + real heal trigger + retry (v0.3)
+├── retry.js                   [NEW v0.3] withRetry() wrapper with linear backoff
 └── sources/
     └── mock-source.js         Unchanged — fake data for development/demo
 
@@ -209,14 +217,24 @@ config/
 └── target-site.example.json   Template for target site configuration
 
 docs/
-├── architecture.md            This file
-└── how-to-add-target-site.md  Step-by-step guide for switching to live mode
+├── architecture.md            This file (v0.3)
+├── how-to-add-target-site.md  Step-by-step guide for switching to live mode
+└── v0.3-changelog.md          What changed in v0.3 and why
 
 scripts/
-├── run-pipeline.js            Main orchestration (unchanged logic, async heal-check)
+├── run-pipeline.js            Main orchestration (v0.3: diff, runs table, rich summary)
 └── setup-collector.js         One-time: create collector + write .env
 
 tests/
-├── brightdata-client.test.js  15 unit tests for CLI wrapper (all mocked)
-└── collector-registry.test.js  5 unit tests for registry
+├── brightdata-client.test.js  15 unit tests for CLI wrapper
+├── collector-registry.test.js  5 unit tests for registry
+└── pipeline-integration.test.js  [NEW v0.3] 21 integration tests
+
+supabase/
+└── schema.sql                 v0.3: products diff cols, richer heal_events, runs table
+
+dashboard/app/components/
+├── ProductTable.tsx           [v0.3] Price delta ▲/▼ indicators, change badges
+├── HealthTimeline.tsx         [v0.3] Heal chips (type/method/attempt/duration)
+└── RunHistory.tsx             [NEW v0.3] Run history table from runs table
 ```

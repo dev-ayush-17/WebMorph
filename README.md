@@ -2,7 +2,7 @@
 
 > A self-healing price and stock tracker built for the **Bright Data Scraper Studio × WeMakeDevs "Into the Scrape-Verse"** hackathon.
 
-**Current status (v0.1):** Infrastructure and orchestration skeleton complete. Mock data source active. Real target website and Bright Data collector pending — that comes in a future session.
+**Current status (v0.3):** Infrastructure and orchestration complete. Mock-mode pipeline is **demo-ready** — runs end-to-end showing price/stock diff, structured run summaries, and a polished dashboard with run history. Real Bright Data integration wired (v0.2). Target website and Collector ID still pending — add two env vars and it goes live instantly.
 
 ---
 
@@ -10,7 +10,7 @@
 
 Undying Scraper runs on a nightly cron, pulls product price/stock data via Bright Data's Scraper Studio, detects when extraction breaks (schema drift, empty results), logs heal events, and alerts on Discord. A Next.js dashboard shows a live price history table and a health timeline.
 
-The pipeline is designed so that swapping the mock data source for a real Bright Data collector is **a one-function change** in `src/collector.js` — nothing downstream needs to change.
+The pipeline is designed so that swapping the mock data source for a real Bright Data collector requires **zero code changes** — set `BRIGHTDATA_COLLECTOR_ID` + `TARGET_URL` environment variables and the collector registry switches automatically. The dashboard, diffing, heal-check, and run history all work identically in both modes.
 
 ---
 
@@ -30,31 +30,47 @@ Target site → Bright Data Scraper Studio → GitHub Actions cron
 
 ```
 .
-├── .github/workflows/   GitHub Actions cron pipeline
+├── .github/workflows/       GitHub Actions cron pipeline
 │   └── pipeline.yml
+├── config/
+│   └── target-site.example.json  Template for target site config
 ├── docs/
-│   └── architecture.md  Full pipeline diagram + swap point docs
+│   ├── architecture.md          Full pipeline diagram (v0.3)
+│   ├── how-to-add-target-site.md  Step-by-step guide for going live
+│   └── v0.3-changelog.md        What changed in v0.3 and why
 ├── scripts/
-│   └── run-pipeline.js  Main orchestration entry point
+│   ├── run-pipeline.js          Main orchestration (v0.3: diff, runs table, rich summary)
+│   └── setup-collector.js       One-time helper: bdata scraper create + .env write
 ├── src/
-│   ├── collector.js     Swappable collector abstraction (mock today)
-│   ├── heal-check.js    Broken-result detection logic
+│   ├── brightdata/
+│   │   ├── client.js            Bright Data CLI wrapper (v0.2)
+│   │   ├── collector-registry.js  Mode switching: LIVE vs MOCK (v0.2)
+│   │   └── errors.js            Typed error classes (v0.2)
+│   ├── collector.js             Swap point — routes to real or mock via registry
+│   ├── diff.js                  Price/stock change detection (v0.3)
+│   ├── heal-check.js            Validation + real heal/retry (v0.3: richer events, retry)
+│   ├── retry.js                 Retry/backoff wrapper (v0.3)
 │   └── sources/
-│       └── mock-source.js  Fake product data with occasional broken shapes
+│       └── mock-source.js       Fake data with occasional broken shapes
 ├── supabase/
-│   └── schema.sql       SQL to paste into Supabase SQL editor
-├── dashboard/           Next.js 16 app (product table + health timeline)
+│   └── schema.sql               SQL schema (v0.3: products diff cols, richer heal_events, runs table)
+├── tests/
+│   ├── brightdata-client.test.js   15 CLI wrapper tests
+│   ├── collector-registry.test.js   5 registry tests
+│   └── pipeline-integration.test.js  21 integration tests (v0.3)
+├── dashboard/                   Next.js 16 app
 │   ├── app/
 │   │   ├── components/
-│   │   │   ├── ProductTable.tsx
-│   │   │   └── HealthTimeline.tsx
-│   │   ├── globals.css  Terminal Amber design system
+│   │   │   ├── ProductTable.tsx   Price delta indicators (v0.3)
+│   │   │   ├── HealthTimeline.tsx  Richer heal event cards (v0.3)
+│   │   │   └── RunHistory.tsx     Run history table (v0.3 new)
+│   │   ├── globals.css            Terminal Amber design system
 │   │   ├── layout.tsx
 │   │   └── page.tsx
 │   └── lib/
-│       ├── supabase.ts  Null-safe Supabase client
-│       └── data.ts      Server-side data fetchers (with mock fallback)
-├── .env.example         Template for all required env vars
+│       ├── supabase.ts            Null-safe Supabase client
+│       └── data.ts                Data fetchers + extended types (v0.3)
+├── .env.example                 Template for all required env vars
 └── README.md
 ```
 
@@ -151,7 +167,8 @@ Before it works, add these **Secrets** in your GitHub repo (Settings → Secrets
 | `SUPABASE_URL` | ✅ Yes |
 | `SUPABASE_ANON_KEY` | ✅ Yes |
 | `DISCORD_WEBHOOK_URL` | Optional |
-| `BRIGHTDATA_COLLECTOR_ID` | Future (v0.2) |
+| `BRIGHTDATA_COLLECTOR_ID` | When target site chosen |
+| `TARGET_URL` | When target site chosen |
 
 ---
 
@@ -179,15 +196,28 @@ Before it works, add these **Secrets** in your GitHub repo (Settings → Secrets
 
 ---
 
-## What's next (v0.2+)
+## What's done / what's next
 
+### ✅ Complete (v0.1–v0.3)
+- [x] Data contract + mock data source
+- [x] Heal-detection pipeline with Discord alerts
+- [x] Supabase schema (products, heal_events, runs)
+- [x] GitHub Actions nightly cron
+- [x] Next.js dashboard — Terminal Amber design
+- [x] Bright Data CLI wrapper with typed errors (v0.2)
+- [x] Collector registry — zero-code env-var switch (v0.2)
+- [x] Real heal-trigger + retry in live mode (v0.2/v0.3)
+- [x] Price/stock diff detection (v0.3)
+- [x] Structured run summaries + runs table (v0.3)
+- [x] Integration test suite — 41 tests total (v0.3)
+- [x] Dashboard: price delta indicators, heal chips, run history (v0.3)
+
+### ⏳ Pending (requires target site decision)
 - [ ] Choose target website
-- [ ] Create Bright Data Scraper Studio collector for that site
-- [ ] Replace mock in `src/collector.js` with real `bdata scraper run` call
-- [ ] Wire `BRIGHTDATA_COLLECTOR_ID` in GitHub secrets
-- [ ] Enable actual `bdata scraper heal` call in `src/heal-check.js`
+- [ ] Run `node scripts/setup-collector.js --url <url> --description <fields>`
+- [ ] Add `BRIGHTDATA_COLLECTOR_ID` + `TARGET_URL` to GitHub Actions secrets
 - [ ] Deploy dashboard to Vercel
-- [ ] Add price history charts
+- [ ] Add price history charts (Recharts)
 
 ---
 
