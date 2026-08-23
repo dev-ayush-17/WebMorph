@@ -20,7 +20,7 @@
 
 'use strict';
 
-const MAX_RETRIES   = 2;    // maximum total attempts (1 original + 1 retry)
+const MAX_RETRIES = 2; // maximum total attempts (1 original + 1 retry)
 const BASE_DELAY_MS = 2000; // 2s between attempts in live mode
 
 /**
@@ -50,10 +50,10 @@ function sleep(ms) {
  * @throws The last error if all attempts are exhausted
  */
 async function withRetry(fn, options = {}) {
-  const maxRetries   = options.maxRetries   ?? MAX_RETRIES;
-  const baseDelayMs  = options.baseDelayMs  ?? BASE_DELAY_MS;
-  const onRetry      = options.onRetry      ?? null;
-  const noDelay      = options.noDelay      ?? false;
+  const maxRetries = options.maxRetries ?? MAX_RETRIES;
+  const baseDelayMs = options.baseDelayMs ?? BASE_DELAY_MS;
+  const onRetry = options.onRetry ?? null;
+  const noDelay = options.noDelay ?? false;
 
   let lastError;
 

@@ -16,7 +16,13 @@
 'use strict';
 
 const assert = require('assert');
-const { parsePrice, parseInStock, parseUrl, normalizeItem, normalizeItems } = require('../src/brightdata/normalize');
+const {
+  parsePrice,
+  parseInStock,
+  parseUrl,
+  normalizeItem,
+  normalizeItems,
+} = require('../src/brightdata/normalize');
 
 let passed = 0;
 let failed = 0;
@@ -34,7 +40,6 @@ async function test(name, fn) {
 }
 
 async function run() {
-
   // ── parsePrice ─────────────────────────────────────────────────────────────
   console.log('\n── parsePrice ───────────────────────────────────────────────');
 
@@ -132,7 +137,10 @@ async function run() {
   });
 
   await test('relative path "/books/..." prefixed with base URL', async () => {
-    assert.strictEqual(parseUrl('/books/some-book.html'), 'https://raajkart.com/books/some-book.html');
+    assert.strictEqual(
+      parseUrl('/books/some-book.html'),
+      'https://raajkart.com/books/some-book.html'
+    );
   });
 
   await test('null/empty → empty string', async () => {
@@ -164,19 +172,36 @@ async function run() {
   });
 
   await test('price as "Rs 299.00" string → number 299', async () => {
-    const item = { product_name: 'Book', price: 'Rs 299.00', currency: 'INR', in_stock: true, product_url: 'https://raajkart.com/b', scraped_at: NOW };
+    const item = {
+      product_name: 'Book',
+      price: 'Rs 299.00',
+      currency: 'INR',
+      in_stock: true,
+      product_url: 'https://raajkart.com/b',
+      scraped_at: NOW,
+    };
     const result = normalizeItem(item, NOW);
     assert.strictEqual(result.price, 299);
   });
 
   await test('alternative field name: name → product_name', async () => {
-    const item = { name: 'University Physics', price: 350, in_stock: true, url: 'https://raajkart.com/u' };
+    const item = {
+      name: 'University Physics',
+      price: 350,
+      in_stock: true,
+      url: 'https://raajkart.com/u',
+    };
     const result = normalizeItem(item, NOW);
     assert.strictEqual(result.product_name, 'University Physics');
   });
 
   await test('alternative field name: title → product_name', async () => {
-    const item = { title: 'Optics by Ajoy Ghatak', price: 425, in_stock: true, product_url: 'https://raajkart.com/optics' };
+    const item = {
+      title: 'Optics by Ajoy Ghatak',
+      price: 425,
+      in_stock: true,
+      product_url: 'https://raajkart.com/optics',
+    };
     const result = normalizeItem(item, NOW);
     assert.strictEqual(result.product_name, 'Optics by Ajoy Ghatak');
   });
@@ -188,19 +213,35 @@ async function run() {
   });
 
   await test('alternative field name: special_price → price', async () => {
-    const item = { product_name: 'Y', special_price: 'Rs 199.00', in_stock: true, product_url: 'https://r.com/y' };
+    const item = {
+      product_name: 'Y',
+      special_price: 'Rs 199.00',
+      in_stock: true,
+      product_url: 'https://r.com/y',
+    };
     const result = normalizeItem(item, NOW);
     assert.strictEqual(result.price, 199);
   });
 
   await test('currency is always forced to INR', async () => {
-    const item = { product_name: 'Z', price: 100, currency: 'Rs', in_stock: true, product_url: 'https://r.com/z' };
+    const item = {
+      product_name: 'Z',
+      price: 100,
+      currency: 'Rs',
+      in_stock: true,
+      product_url: 'https://r.com/z',
+    };
     const result = normalizeItem(item, NOW);
     assert.strictEqual(result.currency, 'INR');
   });
 
   await test('"Out of stock" string in_stock → false', async () => {
-    const item = { product_name: 'OOS Book', price: 300, in_stock: 'Out of stock', product_url: 'https://r.com/oos' };
+    const item = {
+      product_name: 'OOS Book',
+      price: 300,
+      in_stock: 'Out of stock',
+      product_url: 'https://r.com/oos',
+    };
     const result = normalizeItem(item, NOW);
     assert.strictEqual(result.in_stock, false);
   });
@@ -210,9 +251,9 @@ async function run() {
 
   await test('normalizes an array of mixed-quality items', async () => {
     const raw = [
-      { product_name: 'Book A', price: 'Rs 100.00', in_stock: true,  product_url: '/books/a' },
-      { name: 'Book B',         price: 200,          in_stock: false, url: 'https://raajkart.com/books/b' },
-      { title: 'Book C',        special_price: '₹300', in_stock: 'Out of stock', product_url: '/books/c' },
+      { product_name: 'Book A', price: 'Rs 100.00', in_stock: true, product_url: '/books/a' },
+      { name: 'Book B', price: 200, in_stock: false, url: 'https://raajkart.com/books/b' },
+      { title: 'Book C', special_price: '₹300', in_stock: 'Out of stock', product_url: '/books/c' },
     ];
     const results = normalizeItems(raw);
     assert.strictEqual(results.length, 3);
@@ -232,8 +273,20 @@ async function run() {
 
   await test('all items have currency=INR regardless of raw input', async () => {
     const raw = [
-      { product_name: 'X', price: 100, currency: 'Rs', in_stock: true, product_url: 'https://r.com' },
-      { product_name: 'Y', price: 200, currency: '₹',  in_stock: true, product_url: 'https://r.com' },
+      {
+        product_name: 'X',
+        price: 100,
+        currency: 'Rs',
+        in_stock: true,
+        product_url: 'https://r.com',
+      },
+      {
+        product_name: 'Y',
+        price: 200,
+        currency: '₹',
+        in_stock: true,
+        product_url: 'https://r.com',
+      },
     ];
     const results = normalizeItems(raw);
     assert.ok(results.every((r) => r.currency === 'INR'));
@@ -258,4 +311,7 @@ async function run() {
   if (failed > 0) process.exit(1);
 }
 
-run().catch((err) => { console.error('Test runner crashed:', err); process.exit(1); });
+run().catch((err) => {
+  console.error('Test runner crashed:', err);
+  process.exit(1);
+});

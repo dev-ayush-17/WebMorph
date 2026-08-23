@@ -26,16 +26,16 @@
 
 require('dotenv').config();
 
-const { createClient }       = require('@supabase/supabase-js');
-const { runCollector }       = require('../src/collector');
-const { checkResult }        = require('../src/heal-check');
+const { createClient } = require('@supabase/supabase-js');
+const { runCollector } = require('../src/collector');
+const { checkResult } = require('../src/heal-check');
 const { diffProducts, buildDiffSummary } = require('../src/diff');
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const SUPABASE_URL      = process.env.SUPABASE_URL;
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const DISCORD_WEBHOOK   = process.env.DISCORD_WEBHOOK_URL;
+const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
 
 // ─── Supabase client ──────────────────────────────────────────────────────────
 
@@ -43,8 +43,8 @@ function getSupabaseClient() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.warn(
       '[pipeline] ⚠  SUPABASE_URL or SUPABASE_ANON_KEY not set — ' +
-      'Supabase writes will be skipped (dry-run mode). ' +
-      'Copy .env.example to .env and fill in your credentials.'
+        'Supabase writes will be skipped (dry-run mode). ' +
+        'Copy .env.example to .env and fill in your credentials.'
     );
     return null;
   }
@@ -57,7 +57,7 @@ async function sendDiscordAlert(healEvents, runId, diffSummary) {
   if (!DISCORD_WEBHOOK) {
     console.log(
       '[discord] ℹ  DISCORD_WEBHOOK_URL not set — would have sent alert for ' +
-      `${healEvents.length} heal event(s). Set the variable to enable alerts.`
+        `${healEvents.length} heal event(s). Set the variable to enable alerts.`
     );
     return;
   }
@@ -67,27 +67,27 @@ async function sendDiscordAlert(healEvents, runId, diffSummary) {
     description: evt.description,
     color: evt.resolved ? 0x27ae60 : 0xe74c3c, // green if resolved, red if not
     fields: [
-      { name: 'Run ID',       value: runId,                    inline: true  },
-      { name: 'Error Type',   value: evt.error_type,           inline: true  },
-      { name: 'Method',       value: evt.heal_method,          inline: true  },
-      { name: 'Attempt #',    value: String(evt.attempt_number), inline: true },
-      { name: 'Duration',     value: `${evt.duration_ms ?? 0}ms`, inline: true },
-      { name: 'Time',         value: evt.timestamp,            inline: false },
+      { name: 'Run ID', value: runId, inline: true },
+      { name: 'Error Type', value: evt.error_type, inline: true },
+      { name: 'Method', value: evt.heal_method, inline: true },
+      { name: 'Attempt #', value: String(evt.attempt_number), inline: true },
+      { name: 'Duration', value: `${evt.duration_ms ?? 0}ms`, inline: true },
+      { name: 'Time', value: evt.timestamp, inline: false },
     ],
     footer: { text: 'Undying Scraper — self-healing pipeline' },
   }));
 
   const payload = {
-    username:   'Undying Scraper',
+    username: 'Undying Scraper',
     avatar_url: 'https://em-content.zobj.net/source/twitter/376/spider_1f577-fe0f.png',
     embeds,
   };
 
   try {
     const res = await fetch(DISCORD_WEBHOOK, {
-      method:  'POST',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       console.error(`[discord] ✗  Webhook POST failed: ${res.status} ${res.statusText}`);
@@ -115,9 +115,9 @@ async function openRunRecord(supabase, runId, startedAt) {
   }
 
   const { error } = await supabase.from('runs').insert({
-    run_id:     runId,
+    run_id: runId,
     started_at: startedAt,
-    status:     'running',
+    status: 'running',
   });
 
   if (error) {
@@ -163,7 +163,7 @@ async function fetchPriorSnapshots(supabase, productUrls) {
 
     // Keep only the most-recent row per URL
     const map = new Map();
-    for (const row of (data ?? [])) {
+    for (const row of data ?? []) {
       if (!map.has(row.product_url)) {
         map.set(row.product_url, { price: Number(row.price), in_stock: row.in_stock });
       }
@@ -179,7 +179,9 @@ async function fetchPriorSnapshots(supabase, productUrls) {
 
 async function writeProducts(supabase, products, runId) {
   if (!supabase) {
-    console.log(`[pipeline] [dry-run] Would insert ${products.length} products with run_id=${runId}`);
+    console.log(
+      `[pipeline] [dry-run] Would insert ${products.length} products with run_id=${runId}`
+    );
     // In dry-run, still show what diff data would look like
     const changed = products.filter((p) => p.price_changed || p.stock_changed);
     if (changed.length > 0) {
@@ -189,15 +191,15 @@ async function writeProducts(supabase, products, runId) {
   }
 
   const rows = products.map((p) => ({
-    run_id:         runId,
-    product_name:   p.product_name,
-    price:          p.price,
-    currency:       p.currency,
-    in_stock:       p.in_stock,
-    product_url:    p.product_url,
-    scraped_at:     p.scraped_at,
-    price_changed:  p.price_changed  ?? false,
-    stock_changed:  p.stock_changed  ?? false,
+    run_id: runId,
+    product_name: p.product_name,
+    price: p.price,
+    currency: p.currency,
+    in_stock: p.in_stock,
+    product_url: p.product_url,
+    scraped_at: p.scraped_at,
+    price_changed: p.price_changed ?? false,
+    stock_changed: p.stock_changed ?? false,
     previous_price: p.previous_price ?? null,
   }));
 
@@ -215,21 +217,21 @@ async function writeHealEvents(supabase, healEvents) {
     for (const evt of healEvents) {
       console.log(
         `[pipeline] [dry-run]   attempt=${evt.attempt_number} ` +
-        `method=${evt.heal_method} type=${evt.error_type} ` +
-        `resolved=${evt.resolved} duration=${evt.duration_ms ?? 0}ms`
+          `method=${evt.heal_method} type=${evt.error_type} ` +
+          `resolved=${evt.resolved} duration=${evt.duration_ms ?? 0}ms`
       );
     }
     return;
   }
 
   const rows = healEvents.map((evt) => ({
-    timestamp:      evt.timestamp,
-    description:    evt.description,
-    resolved:       evt.resolved,
+    timestamp: evt.timestamp,
+    description: evt.description,
+    resolved: evt.resolved,
     attempt_number: evt.attempt_number ?? 1,
-    heal_method:    evt.heal_method    ?? 'simulated',
-    error_type:     evt.error_type     ?? 'unknown',
-    duration_ms:    evt.duration_ms    ?? null,
+    heal_method: evt.heal_method ?? 'simulated',
+    error_type: evt.error_type ?? 'unknown',
+    duration_ms: evt.duration_ms ?? null,
   }));
 
   const { error } = await supabase.from('heal_events').insert(rows);
@@ -244,8 +246,8 @@ async function writeHealEvents(supabase, healEvents) {
 
 async function main() {
   const startedAt = new Date().toISOString();
-  const startMs   = Date.now();
-  const runId     = `run_${startedAt}`;
+  const startMs = Date.now();
+  const runId = `run_${startedAt}`;
 
   console.log('');
   console.log('═══════════════════════════════════════════════════════════');
@@ -260,9 +262,9 @@ async function main() {
   // 1. Open run record
   const closeRun = await openRunRecord(supabase, runId, startedAt);
 
-  let products   = [];
+  let products = [];
   let healEvents = [];
-  let healthy    = false;
+  let healthy = false;
   let diffSummary = { priceIncreases: 0, priceDecreases: 0, stockFlips: 0, newProducts: 0 };
 
   try {
@@ -277,7 +279,7 @@ async function main() {
     // 4. Fetch prior snapshots for diff (graceful no-op in dry-run)
     if (products.length > 0) {
       console.log('[pipeline] → Fetching prior snapshots for diff...');
-      const productUrls    = products.map((p) => p.product_url);
+      const productUrls = products.map((p) => p.product_url);
       const priorSnapshots = await fetchPriorSnapshots(supabase, productUrls);
 
       // 5. Enrich products with diff metadata
@@ -286,9 +288,9 @@ async function main() {
 
       console.log(
         `[pipeline] ✓  Diff: +${diffSummary.priceIncreases} price↑  ` +
-        `-${diffSummary.priceDecreases} price↓  ` +
-        `${diffSummary.stockFlips} stock flip(s)  ` +
-        `${diffSummary.newProducts} new product(s)`
+          `-${diffSummary.priceDecreases} price↓  ` +
+          `${diffSummary.stockFlips} stock flip(s)  ` +
+          `${diffSummary.newProducts} new product(s)`
       );
     }
 
@@ -305,38 +307,35 @@ async function main() {
       console.log(`[pipeline] → Writing ${healEvents.length} heal event(s) to Supabase...`);
       await writeHealEvents(supabase, healEvents);
     }
-
   } catch (err) {
     console.error(`[pipeline] ✗  Pipeline error: ${err.message}`);
     healthy = false;
   }
 
   // 8. Determine run status
-  const resolvedHeals   = healEvents.filter((e) => e.resolved).length;
+  const resolvedHeals = healEvents.filter((e) => e.resolved).length;
   const unresolvedHeals = healEvents.filter((e) => !e.resolved).length;
   const runStatus =
-    products.length === 0   ? 'failed'
-    : healEvents.length > 0 ? 'degraded'
-    : 'healthy';
+    products.length === 0 ? 'failed' : healEvents.length > 0 ? 'degraded' : 'healthy';
 
   // 9. Build structured summary
-  const finishedAt   = new Date().toISOString();
-  const durationMs   = Date.now() - startMs;
+  const finishedAt = new Date().toISOString();
+  const durationMs = Date.now() - startMs;
 
   const runSummary = {
-    run_id:             runId,
-    started_at:         startedAt,
-    finished_at:        finishedAt,
-    status:             runStatus,
-    products_found:     products.length,
-    price_increases:    diffSummary.priceIncreases,
-    price_decreases:    diffSummary.priceDecreases,
-    stock_flips:        diffSummary.stockFlips,
-    new_products:       diffSummary.newProducts,
-    heal_events_total:  healEvents.length,
-    heal_events_resolved:   resolvedHeals,
+    run_id: runId,
+    started_at: startedAt,
+    finished_at: finishedAt,
+    status: runStatus,
+    products_found: products.length,
+    price_increases: diffSummary.priceIncreases,
+    price_decreases: diffSummary.priceDecreases,
+    stock_flips: diffSummary.stockFlips,
+    new_products: diffSummary.newProducts,
+    heal_events_total: healEvents.length,
+    heal_events_resolved: resolvedHeals,
     heal_events_unresolved: unresolvedHeals,
-    duration_ms:        durationMs,
+    duration_ms: durationMs,
   };
 
   // 10. Close run record with summary
@@ -353,11 +352,17 @@ async function main() {
   console.log('');
   console.log('───────────────────────────────────────────────────────────');
   console.log('  Run complete');
-  console.log(`  Status:         ${runStatus === 'healthy' ? '✓ Healthy' : runStatus === 'degraded' ? '⚠  Degraded (healed)' : '✗ Failed'}`);
+  console.log(
+    `  Status:         ${runStatus === 'healthy' ? '✓ Healthy' : runStatus === 'degraded' ? '⚠  Degraded (healed)' : '✗ Failed'}`
+  );
   console.log(`  Products:       ${products.length} written`);
-  console.log(`  Price changes:  ↑${diffSummary.priceIncreases}  ↓${diffSummary.priceDecreases}  (${diffSummary.newProducts} new)`);
+  console.log(
+    `  Price changes:  ↑${diffSummary.priceIncreases}  ↓${diffSummary.priceDecreases}  (${diffSummary.newProducts} new)`
+  );
   console.log(`  Stock flips:    ${diffSummary.stockFlips}`);
-  console.log(`  Heal events:    ${healEvents.length} (${resolvedHeals} resolved, ${unresolvedHeals} unresolved)`);
+  console.log(
+    `  Heal events:    ${healEvents.length} (${resolvedHeals} resolved, ${unresolvedHeals} unresolved)`
+  );
   console.log(`  Duration:       ${elapsed}s`);
   console.log('───────────────────────────────────────────────────────────');
   console.log('');

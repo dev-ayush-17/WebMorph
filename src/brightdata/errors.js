@@ -36,7 +36,7 @@ class CliNotAuthenticatedError extends BrightDataError {
   constructor(stderr = '') {
     super(
       'Bright Data CLI is not authenticated or not installed. ' +
-      'Run `bdata login` and ensure the `bdata` binary is on PATH.',
+        'Run `bdata login` and ensure the `bdata` binary is on PATH.',
       stderr
     );
     this.name = 'CliNotAuthenticatedError';
@@ -57,7 +57,7 @@ class CollectorNotFoundError extends BrightDataError {
   constructor(collectorId, stderr = '') {
     super(
       `Collector '${collectorId}' was not found. It may have been deleted or ` +
-      'the Collector ID is incorrect. Re-create it with `bdata scraper create`.',
+        'the Collector ID is incorrect. Re-create it with `bdata scraper create`.',
       stderr
     );
     this.name = 'CollectorNotFoundError';
@@ -81,7 +81,7 @@ class ScrapeReturnedEmptyError extends BrightDataError {
   constructor(collectorId, stderr = '') {
     super(
       `Collector '${collectorId}' ran but returned zero results. ` +
-      'The target site structure may have changed. Call `bdata scraper heal`.',
+        'The target site structure may have changed. Call `bdata scraper heal`.',
       stderr
     );
     this.name = 'ScrapeReturnedEmptyError';

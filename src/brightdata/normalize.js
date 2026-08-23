@@ -49,11 +49,11 @@ function parsePrice(raw) {
   if (typeof raw === 'number') return isFinite(raw) ? raw : null;
 
   const str = String(raw)
-    .replace(/rs\.?\s*/i, '')      // "Rs " / "Rs."
-    .replace(/₹/g, '')             // rupee symbol
-    .replace(/inr/gi, '')          // "INR" suffix
-    .replace(/,(?=\d{3})/g, '')    // thousands separator: "1,299" → "1299"
-    .replace(/[^\d.]/g, '')        // strip any remaining non-numeric chars
+    .replace(/rs\.?\s*/i, '') // "Rs " / "Rs."
+    .replace(/₹/g, '') // rupee symbol
+    .replace(/inr/gi, '') // "INR" suffix
+    .replace(/,(?=\d{3})/g, '') // thousands separator: "1,299" → "1299"
+    .replace(/[^\d.]/g, '') // strip any remaining non-numeric chars
     .trim();
 
   if (str === '') return null;
@@ -83,9 +83,10 @@ function parseInStock(raw) {
   if (typeof raw === 'number') return raw !== 0;
 
   const s = String(raw).toLowerCase().trim();
-  if (s === 'true'  || s === 'yes' || s === '1') return true;
-  if (s === 'false' || s === 'no'  || s === '0') return false;
-  if (s.includes('out of stock') || s.includes('unavailable') || s.includes('sold out')) return false;
+  if (s === 'true' || s === 'yes' || s === '1') return true;
+  if (s === 'false' || s === 'no' || s === '0') return false;
+  if (s.includes('out of stock') || s.includes('unavailable') || s.includes('sold out'))
+    return false;
   if (s.includes('in stock') || s.includes('available')) return true;
   // "in stock" = no label → true; "out of stock" label present → false
   // If we got a non-empty string that doesn't match, lean toward true
@@ -149,39 +150,39 @@ function parseName(item) {
 function normalizeItem(item, now) {
   // Price: try canonical field, then common alternatives
   const rawPrice =
-    item.price             ??
-    item.special_price     ??
-    item.specialPrice      ??
-    item.sale_price        ??
-    item.salePrice         ??
-    item.discounted_price  ??
+    item.price ??
+    item.special_price ??
+    item.specialPrice ??
+    item.sale_price ??
+    item.salePrice ??
+    item.discounted_price ??
     null;
 
   // URL: canonical or alternative
-  const rawUrl =
-    item.product_url  ??
-    item.productUrl   ??
-    item.url          ??
-    item.link         ??
-    item.href         ??
-    null;
+  const rawUrl = item.product_url ?? item.productUrl ?? item.url ?? item.link ?? item.href ?? null;
 
   // In-stock: canonical or alternative
   const rawInStock =
-    ('in_stock'    in item) ? item.in_stock    :
-    ('inStock'     in item) ? item.inStock     :
-    ('available'   in item) ? item.available   :
-    ('stock'       in item) ? item.stock       :
-    ('availability'in item) ? item.availability :
-    null;
+    'in_stock' in item
+      ? item.in_stock
+      : 'inStock' in item
+        ? item.inStock
+        : 'available' in item
+          ? item.available
+          : 'stock' in item
+            ? item.stock
+            : 'availability' in item
+              ? item.availability
+              : null;
 
   return {
-    product_name: parseName(item) ?? (typeof item.product_name === 'string' ? item.product_name : ''),
-    price:        parsePrice(rawPrice),
-    currency:     'INR',                   // always forced for this collector
-    in_stock:     parseInStock(rawInStock),
-    product_url:  parseUrl(rawUrl),
-    scraped_at:   now,                     // override AI's timestamp with our own
+    product_name:
+      parseName(item) ?? (typeof item.product_name === 'string' ? item.product_name : ''),
+    price: parsePrice(rawPrice),
+    currency: 'INR', // always forced for this collector
+    in_stock: parseInStock(rawInStock),
+    product_url: parseUrl(rawUrl),
+    scraped_at: now, // override AI's timestamp with our own
   };
 }
 
@@ -204,11 +205,11 @@ function normalizeItems(items) {
       console.warn(`[normalize] ⚠  Item[${i}] normalization failed: ${err.message}`);
       return {
         product_name: `[parse error — item ${i}]`,
-        price:        null,
-        currency:     'INR',
-        in_stock:     true,
-        product_url:  '',
-        scraped_at:   now,
+        price: null,
+        currency: 'INR',
+        in_stock: true,
+        product_url: '',
+        scraped_at: now,
       };
     }
   });

@@ -15,11 +15,7 @@
 'use strict';
 
 const assert = require('assert');
-const {
-  createCollector,
-  runCollector,
-  healCollector,
-} = require('../src/brightdata/client');
+const { createCollector, runCollector, healCollector } = require('../src/brightdata/client');
 const {
   CliNotAuthenticatedError,
   CollectorNotFoundError,
@@ -64,7 +60,6 @@ function mockExecFail(stderr, exitCode = 1) {
 // ─── Test suite ───────────────────────────────────────────────────────────────
 
 async function runTests() {
-
   const sampleProduct = {
     product_name: 'Test Widget',
     price: 29.99,
@@ -78,18 +73,16 @@ async function runTests() {
   console.log('\n── createCollector ──────────────────────────────────────────');
 
   await test('returns collector ID from text output', async () => {
-    const id = await createCollector(
-      'https://example.com', 'product name, price',
-      { _exec: mockExec('Collector created: c_abc123xyz\n') }
-    );
+    const id = await createCollector('https://example.com', 'product name, price', {
+      _exec: mockExec('Collector created: c_abc123xyz\n'),
+    });
     assert.strictEqual(id, 'c_abc123xyz');
   });
 
   await test('returns collector ID from JSON output', async () => {
-    const id = await createCollector(
-      'https://example.com', 'product name, price',
-      { _exec: mockExec('{"collector_id":"c_json456def"}\n') }
-    );
+    const id = await createCollector('https://example.com', 'product name, price', {
+      _exec: mockExec('{"collector_id":"c_json456def"}\n'),
+    });
     assert.strictEqual(id, 'c_json456def');
   });
 
@@ -101,8 +94,10 @@ async function runTests() {
       });
     } catch (err) {
       threw = true;
-      assert.ok(err instanceof CliNotAuthenticatedError,
-        `Expected CliNotAuthenticatedError, got ${err.name}`);
+      assert.ok(
+        err instanceof CliNotAuthenticatedError,
+        `Expected CliNotAuthenticatedError, got ${err.name}`
+      );
     }
     assert.ok(threw, 'Expected an error to be thrown');
   });
@@ -115,8 +110,10 @@ async function runTests() {
       });
     } catch (err) {
       threw = true;
-      assert.ok(err instanceof CliNotAuthenticatedError,
-        `Expected CliNotAuthenticatedError, got ${err.name}`);
+      assert.ok(
+        err instanceof CliNotAuthenticatedError,
+        `Expected CliNotAuthenticatedError, got ${err.name}`
+      );
     }
     assert.ok(threw, 'Expected an error to be thrown');
   });
@@ -129,8 +126,7 @@ async function runTests() {
       });
     } catch (err) {
       threw = true;
-      assert.ok(err instanceof UnknownCliError,
-        `Expected UnknownCliError, got ${err.name}`);
+      assert.ok(err instanceof UnknownCliError, `Expected UnknownCliError, got ${err.name}`);
     }
     assert.ok(threw, 'Expected an error to be thrown');
   });
@@ -161,8 +157,10 @@ async function runTests() {
       });
     } catch (err) {
       threw = true;
-      assert.ok(err instanceof ScrapeReturnedEmptyError,
-        `Expected ScrapeReturnedEmptyError, got ${err.name}`);
+      assert.ok(
+        err instanceof ScrapeReturnedEmptyError,
+        `Expected ScrapeReturnedEmptyError, got ${err.name}`
+      );
       assert.strictEqual(err.collectorId, 'c_test');
     }
     assert.ok(threw, 'Expected an error to be thrown');
@@ -176,8 +174,10 @@ async function runTests() {
       });
     } catch (err) {
       threw = true;
-      assert.ok(err instanceof ScrapeReturnedEmptyError,
-        `Expected ScrapeReturnedEmptyError, got ${err.name}`);
+      assert.ok(
+        err instanceof ScrapeReturnedEmptyError,
+        `Expected ScrapeReturnedEmptyError, got ${err.name}`
+      );
     }
     assert.ok(threw, 'Expected an error to be thrown');
   });
@@ -190,8 +190,10 @@ async function runTests() {
       });
     } catch (err) {
       threw = true;
-      assert.ok(err instanceof CollectorNotFoundError,
-        `Expected CollectorNotFoundError, got ${err.name}`);
+      assert.ok(
+        err instanceof CollectorNotFoundError,
+        `Expected CollectorNotFoundError, got ${err.name}`
+      );
       assert.strictEqual(err.collectorId, 'c_bad');
     }
     assert.ok(threw, 'Expected an error to be thrown');
@@ -205,8 +207,10 @@ async function runTests() {
       });
     } catch (err) {
       threw = true;
-      assert.ok(err instanceof CliNotAuthenticatedError,
-        `Expected CliNotAuthenticatedError, got ${err.name}`);
+      assert.ok(
+        err instanceof CliNotAuthenticatedError,
+        `Expected CliNotAuthenticatedError, got ${err.name}`
+      );
     }
     assert.ok(threw, 'Expected an error to be thrown');
   });
@@ -219,8 +223,7 @@ async function runTests() {
       });
     } catch (err) {
       threw = true;
-      assert.ok(err instanceof UnknownCliError,
-        `Expected UnknownCliError, got ${err.name}`);
+      assert.ok(err instanceof UnknownCliError, `Expected UnknownCliError, got ${err.name}`);
     }
     assert.ok(threw, 'Expected an error to be thrown');
   });
@@ -243,8 +246,10 @@ async function runTests() {
       });
     } catch (err) {
       threw = true;
-      assert.ok(err instanceof CliNotAuthenticatedError,
-        `Expected CliNotAuthenticatedError, got ${err.name}`);
+      assert.ok(
+        err instanceof CliNotAuthenticatedError,
+        `Expected CliNotAuthenticatedError, got ${err.name}`
+      );
     }
     assert.ok(threw, 'Expected an error to be thrown');
   });
@@ -257,8 +262,10 @@ async function runTests() {
       });
     } catch (err) {
       threw = true;
-      assert.ok(err instanceof CollectorNotFoundError,
-        `Expected CollectorNotFoundError, got ${err.name}`);
+      assert.ok(
+        err instanceof CollectorNotFoundError,
+        `Expected CollectorNotFoundError, got ${err.name}`
+      );
     }
     assert.ok(threw, 'Expected an error to be thrown');
   });

@@ -39,7 +39,7 @@ const AUTH_PATTERNS = [
   /please log in/i,
   /bdata login/i,
   /command not found/i,
-  /is not recognized/i,          // Windows "X is not recognized as..."
+  /is not recognized/i, // Windows "X is not recognized as..."
   /cannot find the path/i,
 ];
 
@@ -218,7 +218,9 @@ async function runCollector(collectorId, url, options = {}) {
   // Normalize field names/types into our data contract
   const items = normalizeItems(rawItems);
 
-  console.log(`[brightdata] ✓ Collector returned ${items.length} items (normalized from ${rawItems.length} raw)`);
+  console.log(
+    `[brightdata] ✓ Collector returned ${items.length} items (normalized from ${rawItems.length} raw)`
+  );
   return items;
 }
 

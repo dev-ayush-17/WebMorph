@@ -29,12 +29,12 @@ const { withRetry, MAX_RETRIES } = require('./retry');
 // ─── Data contract definition (unchanged) ─────────────────────────────────────
 
 const REQUIRED_FIELDS = [
-  { name: 'product_name', type: 'string'  },
-  { name: 'price',        type: 'number'  },
-  { name: 'currency',     type: 'string'  },
-  { name: 'in_stock',     type: 'boolean' },
-  { name: 'product_url',  type: 'string'  },
-  { name: 'scraped_at',   type: 'string'  },
+  { name: 'product_name', type: 'string' },
+  { name: 'price', type: 'number' },
+  { name: 'currency', type: 'string' },
+  { name: 'in_stock', type: 'boolean' },
+  { name: 'product_url', type: 'string' },
+  { name: 'scraped_at', type: 'string' },
 ];
 
 // ─── Error classification ─────────────────────────────────────────────────────
@@ -45,18 +45,18 @@ const REQUIRED_FIELDS = [
  */
 function classifyErrorType(description) {
   const d = description.toLowerCase();
-  if (d.includes('empty array'))      return 'empty_result';
-  if (d.includes('missing field'))    return 'missing_fields';
+  if (d.includes('empty array')) return 'empty_result';
+  if (d.includes('missing field')) return 'missing_fields';
   if (d.includes('validation error')) return 'missing_fields';
   if (d.includes('expected') && d.includes('got')) return 'type_mismatch';
   return 'unknown';
 }
 
 function classifyErrorTypeFromException(err) {
-  if (err instanceof ScrapeReturnedEmptyError)  return 'empty_result';
-  if (err instanceof CliNotAuthenticatedError)  return 'cli_auth';
-  if (err instanceof CollectorNotFoundError)    return 'collector_gone';
-  if (err instanceof BrightDataError)           return 'unknown';
+  if (err instanceof ScrapeReturnedEmptyError) return 'empty_result';
+  if (err instanceof CliNotAuthenticatedError) return 'cli_auth';
+  if (err instanceof CollectorNotFoundError) return 'collector_gone';
+  if (err instanceof BrightDataError) return 'unknown';
   return 'unknown';
 }
 
@@ -70,7 +70,7 @@ function validateProduct(product, index) {
     } else if (typeof product[field.name] !== field.type) {
       issues.push(
         `item[${index}]: field '${field.name}' expected ${field.type}, ` +
-        `got ${typeof product[field.name]} (value: ${JSON.stringify(product[field.name])})`
+          `got ${typeof product[field.name]} (value: ${JSON.stringify(product[field.name])})`
       );
     }
   }
@@ -107,11 +107,11 @@ function triggerWouldHeal(description, attemptNumber = 1) {
   return {
     timestamp,
     description,
-    resolved:       false,
+    resolved: false,
     attempt_number: attemptNumber,
-    heal_method:    'simulated',
-    error_type:     errorType,
-    duration_ms:    0,
+    heal_method: 'simulated',
+    error_type: errorType,
+    duration_ms: 0,
   };
 }
 
@@ -125,9 +125,9 @@ function triggerWouldHeal(description, attemptNumber = 1) {
  */
 async function triggerRealHeal(description, errorType, options = {}) {
   const collectorId = registry.getCollectorId();
-  const targetUrl   = registry.getTargetUrl();
+  const targetUrl = registry.getTargetUrl();
   const healFn = options._healCollector ?? bdataClient.healCollector;
-  const runFn  = options._runCollector  ?? bdataClient.runCollector;
+  const runFn = options._runCollector ?? bdataClient.runCollector;
   const noDelay = options._noDelay ?? false;
 
   console.log('');
@@ -165,7 +165,9 @@ async function triggerRealHeal(description, errorType, options = {}) {
         maxRetries: MAX_RETRIES,
         noDelay,
         onRetry: (attempt, err) => {
-          console.log(`[heal-check]    Retrying heal (attempt ${attempt + 1} of ${MAX_RETRIES})...`);
+          console.log(
+            `[heal-check]    Retrying heal (attempt ${attempt + 1} of ${MAX_RETRIES})...`
+          );
         },
       }
     );
@@ -173,10 +175,14 @@ async function triggerRealHeal(description, errorType, options = {}) {
   } catch (err) {
     lastError = err;
     const derivedType = classifyErrorTypeFromException(err);
-    console.error(`[heal-check] ✗  All ${MAX_RETRIES} heal attempt(s) exhausted. Last error: ${err.message}`);
+    console.error(
+      `[heal-check] ✗  All ${MAX_RETRIES} heal attempt(s) exhausted. Last error: ${err.message}`
+    );
     // If it's a CLI auth error, no point retrying — log clearly
     if (err instanceof CliNotAuthenticatedError) {
-      console.error('[heal-check]    Authentication failure — human intervention required (bdata login)');
+      console.error(
+        '[heal-check]    Authentication failure — human intervention required (bdata login)'
+      );
     }
   }
 
@@ -200,15 +206,15 @@ async function triggerRealHeal(description, errorType, options = {}) {
   const totalDurationMs = Date.now() - runStartMs;
 
   const healEvent = {
-    timestamp:      new Date().toISOString(),
-    description:    lastError
+    timestamp: new Date().toISOString(),
+    description: lastError
       ? `${description} | All heal attempts failed: ${lastError.message}`
       : description,
-    resolved:       retryProducts.length > 0,
+    resolved: retryProducts.length > 0,
     attempt_number: lastAttemptNumber,
-    heal_method:    'real',
-    error_type:     lastError ? classifyErrorTypeFromException(lastError) : errorType,
-    duration_ms:    totalDurationMs,
+    heal_method: 'real',
+    error_type: lastError ? classifyErrorTypeFromException(lastError) : errorType,
+    duration_ms: totalDurationMs,
   };
 
   return { healEvent, retryProducts };
@@ -244,12 +250,16 @@ async function checkResult(collectorResult, options = {}) {
     if (!live) {
       return { healthy: false, products: [], healEvents: [triggerWouldHeal(description)] };
     }
-    const { healEvent, retryProducts } = await triggerRealHeal(description, 'empty_result', options);
+    const { healEvent, retryProducts } = await triggerRealHeal(
+      description,
+      'empty_result',
+      options
+    );
     return { healthy: retryProducts.length > 0, products: retryProducts, healEvents: [healEvent] };
   }
 
   // ── Field validation ──────────────────────────────────────────────────────
-  const allIssues   = [];
+  const allIssues = [];
   const validProducts = [];
 
   for (let i = 0; i < collectorResult.length; i++) {
@@ -264,7 +274,9 @@ async function checkResult(collectorResult, options = {}) {
       allIssues.slice(0, 3).join('; ') +
       (allIssues.length > 3 ? ` ... and ${allIssues.length - 3} more` : '');
 
-    const errorType = summary.toLowerCase().includes('missing field') ? 'missing_fields' : 'type_mismatch';
+    const errorType = summary.toLowerCase().includes('missing field')
+      ? 'missing_fields'
+      : 'type_mismatch';
 
     if (!live) {
       const event = triggerWouldHeal(summary);
@@ -272,20 +284,20 @@ async function checkResult(collectorResult, options = {}) {
       if (healthy) {
         console.log(
           `[heal-check] ⚠  Partial result: ${validProducts.length}/${collectorResult.length} ` +
-          `products valid — passing through valid items`
+            `products valid — passing through valid items`
         );
       }
       return { healthy, products: validProducts, healEvents: [event] };
     }
 
     const { healEvent, retryProducts } = await triggerRealHeal(summary, errorType, options);
-    const allValid = [...new Map(
-      [...validProducts, ...retryProducts].map((p) => [p.product_url, p])
-    ).values()];
+    const allValid = [
+      ...new Map([...validProducts, ...retryProducts].map((p) => [p.product_url, p])).values(),
+    ];
 
     console.log(
       `[heal-check] ⚠  Partial: ${validProducts.length} from original + ` +
-      `${retryProducts.length} from retry = ${allValid.length} total`
+        `${retryProducts.length} from retry = ${allValid.length} total`
     );
 
     return { healthy: allValid.length > 0, products: allValid, healEvents: [healEvent] };

@@ -62,8 +62,8 @@ function diffProducts(newProducts, priorSnapshots) {
       // First time we've seen this product — no comparison possible
       return {
         ...product,
-        price_changed:  false,
-        stock_changed:  false,
+        price_changed: false,
+        stock_changed: false,
         previous_price: null,
       };
     }
@@ -74,8 +74,8 @@ function diffProducts(newProducts, priorSnapshots) {
 
     return {
       ...product,
-      price_changed:  priceChanged,
-      stock_changed:  stockChanged,
+      price_changed: priceChanged,
+      stock_changed: stockChanged,
       previous_price: prior.price,
     };
   });
@@ -92,8 +92,8 @@ function diffProducts(newProducts, priorSnapshots) {
 function buildDiffSummary(enrichedProducts) {
   let priceIncreases = 0;
   let priceDecreases = 0;
-  let stockFlips     = 0;
-  let newProducts    = 0;
+  let stockFlips = 0;
+  let newProducts = 0;
 
   for (const p of enrichedProducts) {
     if (p.previous_price === null) {
