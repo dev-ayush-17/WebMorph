@@ -1,207 +1,146 @@
-# Undying Scraper
+# 🕷 Undying Scraper — Self-Healing Price & Stock Tracker
 
-> A self-healing price and stock tracker built for the **Bright Data Scraper Studio × WeMakeDevs "Into the Scrape-Verse"** hackathon.
+A resilient, production-ready web scraping pipeline that heals itself when websites change. Built for the **Bright Data Scraper Studio × WeMakeDevs "Into the Scrape-Verse"** Hackathon.
 
-**Current status (v0.1):** Infrastructure and orchestration skeleton complete. Mock data source active. Real target website and Bright Data collector pending — that comes in a future session.
-
----
-
-## What this is
-
-Undying Scraper runs on a nightly cron, pulls product price/stock data via Bright Data's Scraper Studio, detects when extraction breaks (schema drift, empty results), logs heal events, and alerts on Discord. A Next.js dashboard shows a live price history table and a health timeline.
-
-The pipeline is designed so that swapping the mock data source for a real Bright Data collector is **a one-function change** in `src/collector.js` — nothing downstream needs to change.
+> **Live Demo Dashboard:** [[PENDING VERCEL DEPLOYMENT]](https://undying-scraper-dashboard.vercel.app)  
+> **Nightly Run Pipeline Status:** [![Undying Scraper Pipeline](https://github.com/dev-ayush-17/WebMorph/actions/workflows/pipeline.yml/badge.svg)](https://github.com/dev-ayush-17/WebMorph/actions/workflows/pipeline.yml)
 
 ---
 
-## Architecture
+## 💡 The Pitch: Why This Matters
 
-See [`docs/architecture.md`](docs/architecture.md) for the full pipeline diagram and the mock-to-real swap point explanation.
+Most price and stock trackers fail silently when target websites undergo structural changes or redesigns. A broken CSS selector results in empty datasets or corrupted null entries, remaining broken until a developer manually patches and redeploys the code. 
+
+**Undying Scraper** eliminates this single point of failure. It acts as an autonomous data pipeline that monitors textbook listings on **Raajkart.com**. If a markup change breaks the extraction schema, Undying Scraper:
+1. **Detects** the validation failure instantly.
+2. **Triggers** Bright Data's AI-powered self-healing engine to analyze the page and fix selectors in place.
+3. **Retries** the execution to save healthy data to a Supabase database.
+4. **Notifies** you on Discord with detailed diagnostics.
+
+---
+
+## 🏗 Pipeline Architecture
 
 ```
-Target site → Bright Data Scraper Studio → GitHub Actions cron
-  → heal-detection → Supabase → Next.js dashboard
-                  ↘ Discord alert (on heal event)
+                                ┌────────────────────────┐
+                                │   Raajkart.com Book    │
+                                │  Physics Listing Page  │
+                                └───────────┬────────────┘
+                                            │ (Scraped via Web Unlocker)
+                                            ▼
+                                ┌────────────────────────┐
+                                │   Bright Data Scraper  │
+                                │   Studio Collector     │
+                                └───────────┬────────────┘
+                                            │
+                                            ▼
+ ┌──────────────────┐           ┌────────────────────────┐
+ │  GitHub Actions  ├──────────►│  run-pipeline.js Orche  │
+ │   Nightly Cron   │           │  strator (Node.js)     │
+ └──────────────────┘           └───────────┬────────────┘
+                                            │
+               ┌────────────────────────────┼────────────────────────────┐
+               ▼ (On Validation Failure)    ▼ (If Success)               ▼ (Diagnostic Alert)
+      ┌──────────────────┐        ┌──────────────────┐        ┌──────────────────┐
+      │ bdata scraper    │        │ Diff Engine &    │        │ Discord Webhook  │
+      │ heal API         │        │ Supabase Writer  │        │ Notification     │
+      └────────┬─────────┘        └────────┬─────────┘        └──────────────────┘
+               │                           │
+               ▼ (AI code update)          ▼
+      ┌──────────────────┐        ┌──────────────────┐
+      │ Scraper code     │        │ Supabase DB      │
+      │ updated in-cloud │        │ (products,       │
+      └──────────────────┘        │  runs, events)   │
+                                  └────────┬─────────┘
+                                           │
+                                           ▼
+                                  ┌──────────────────┐
+                                  │ Next.js Dashboard│
+                                  │ (Terminal Amber) │
+                                  └──────────────────┘
 ```
 
 ---
 
-## Repo structure
+## ⚡ The Key Differentiator: Real Self-Healing
 
-```
-.
-├── .github/workflows/   GitHub Actions cron pipeline
-│   └── pipeline.yml
-├── docs/
-│   └── architecture.md  Full pipeline diagram + swap point docs
-├── scripts/
-│   └── run-pipeline.js  Main orchestration entry point
-├── src/
-│   ├── collector.js     Swappable collector abstraction (mock today)
-│   ├── heal-check.js    Broken-result detection logic
-│   └── sources/
-│       └── mock-source.js  Fake product data with occasional broken shapes
-├── supabase/
-│   └── schema.sql       SQL to paste into Supabase SQL editor
-├── dashboard/           Next.js 16 app (product table + health timeline)
-│   ├── app/
-│   │   ├── components/
-│   │   │   ├── ProductTable.tsx
-│   │   │   └── HealthTimeline.tsx
-│   │   ├── globals.css  Terminal Amber design system
-│   │   ├── layout.tsx
-│   │   └── page.tsx
-│   └── lib/
-│       ├── supabase.ts  Null-safe Supabase client
-│       └── data.ts      Server-side data fetchers (with mock fallback)
-├── .env.example         Template for all required env vars
-└── README.md
-```
+Unlike simple monitoring scripts, Undying Scraper implements a **real, functional self-healing feedback loop**. By leveraging the `@brightdata/cli` wrapper, our Node orchestration client programmatically interacts with Bright Data's Scraper Studio API. When a structural page break is detected, the pipeline automatically submits the broken DOM to the AI compiler to re-target the elements, updating the scraper configuration in real time without human intervention.
 
 ---
 
-## Prerequisites
+## 🛠 Tech Stack
 
-- Node.js 18+
-- A Supabase project (free tier) — see "Setup" below
-- (Optional) A Discord webhook URL for heal alerts
-- (Later) A Bright Data account with a Scraper Studio collector
+- **Core Extraction**: [Bright Data Scraper Studio](https://brightdata.com/products/web-scraper) (with Web Unlocker bypassing Cloudflare bot-walls).
+- **Data Orchestration**: Node.js client with linear backoff retries.
+- **Database Layer**: [Supabase](https://supabase.com) (PostgreSQL tables for Products, Runs, and Heal Events).
+- **Automation Pipeline**: GitHub Actions (nightly cron workflows + manual triggers).
+- **Frontend Dashboard**: Next.js Server Components styled with a premium custom **Terminal Amber** vanilla CSS design system.
+- **Diagnostics**: Discord API (embedded webhook alerts).
 
 ---
 
-## Setup
+## 🔄 How the Self-Healing Loop Works
 
-### 1. Clone and install root dependencies
+```
+ ┌──────────┐     ┌────────────┐     ┌──────────┐     ┌──────────┐
+ │  SCRAPE  │───► │  VALIDATE  │───► │   HEAL   │───► │  RETRY   │
+ └──────────┘     └────────────┘     └──────────┘     └──────────┘
+```
 
+1. **Scrape**: The orchestrator triggers the collector to scrape the target URL.
+2. **Validate**: `heal-check.js` scans the payload against our strict data contract (requiring product name, numeric price, INR currency, stock boolean, absolute URL, and timestamp).
+3. **Heal**: If a validation failure occurs (e.g. price class renamed), the script fires a `bdata scraper heal` event.
+4. **Verify**: The script performs a linear-backoff retry of the collector. If it succeeds, the healed run is completed, and the dashboard logs the event as resolved.
+
+---
+
+## 💻 Local Setup & Installation
+
+### 1. Clone & Install Dependencies
 ```bash
-git clone <your-fork>
-cd undying-scraper
+git clone https://github.com/dev-ayush-17/WebMorph.git
+cd WebMorph
 npm install
 ```
 
-### 2. Configure environment variables
-
+### 2. Configure Environment Variables
+Copy `.env.example` to `.env` in the root directory:
 ```bash
 cp .env.example .env
 ```
+Fill in your Supabase project credentials. To run in **Mock Mode** (simulating runs and self-healing deterministically), leave the `BRIGHTDATA_COLLECTOR_ID` and `TARGET_URL` values blank.
 
-Open `.env` and fill in:
+### 3. Setup Supabase Database Schema
+In your Supabase project dashboard, open the **SQL Editor**, paste the contents of `supabase/schema.sql`, and click **Run**. This configures the tables for products, heal events, and pipeline runs.
 
-| Variable | Where to find it |
-|---|---|
-| `SUPABASE_URL` | Supabase project → Settings → API → Project URL |
-| `SUPABASE_ANON_KEY` | Supabase project → Settings → API → anon public key |
-| `DISCORD_WEBHOOK_URL` | Discord server → Integrations → Webhooks (optional) |
-| `BRIGHTDATA_COLLECTOR_ID` | Bright Data → Scraper Studio → your collector (**leave empty for now**) |
-
-### 3. Apply the Supabase schema
-
-In the Supabase dashboard, open **SQL Editor** and paste the contents of `supabase/schema.sql`. Run it.
-
----
-
-## Running locally
-
-### Run the pipeline (mock data → Supabase)
-
+### 4. Run the Pipeline
 ```bash
+# Triggers the Node.js scraper workflow
 node scripts/run-pipeline.js
 ```
 
-This will:
-1. Generate mock product data (15–30 products, occasionally broken)
-2. Run heal-check validation
-3. Write healthy rows to `products` table in Supabase
-4. Write any heal events to `heal_events` table
-5. Send a Discord alert if a heal event fired (no-op if webhook not set)
-
-**No Supabase credentials?** It runs in dry-run mode and logs what it *would* write — safe to run immediately.
-
-### Run the dashboard
-
+### 5. Launch the Dashboard
 ```bash
 cd dashboard
 cp .env.local.example .env.local
-# edit .env.local with NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
+# (Optional) Add your Supabase credentials to dashboard/.env.local
+npm install
 npm run dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000)
-
-**No Supabase credentials?** The dashboard renders with mock data automatically.
+Open [http://localhost:3000](http://localhost:3000) to view the monitoring interface. If Supabase is unconfigured, the dashboard automatically loads simulated textbook price deltas and historical timeline events.
 
 ---
 
-## Dashboard design
+## 📖 Additional Walkthroughs & Documentation
 
-The dashboard uses a **Terminal Amber** theme — a dark background with amber/gold data accents and Space Grotesk + Space Mono typefaces. Layout is a sidebar-main split (not hero+cards) with a data table and vertical health timeline. Design follows [Hallmark](https://github.com/Nutlope/hallmark) principles: named theme, structural variety, no Inter+purple-gradient defaults.
-
-> **Note:** The `hallmark` npm package/skill should be properly installed in a future session for automated design system enforcement.
-
----
-
-## GitHub Actions (automated nightly run)
-
-The workflow at `.github/workflows/pipeline.yml` runs nightly at **02:00 UTC** and supports `workflow_dispatch` for manual triggers.
-
-Before it works, add these **Secrets** in your GitHub repo (Settings → Secrets and variables → Actions → New repository secret):
-
-| Secret | Required? |
-|---|---|
-| `SUPABASE_URL` | ✅ Yes |
-| `SUPABASE_ANON_KEY` | ✅ Yes |
-| `DISCORD_WEBHOOK_URL` | Optional |
-| `BRIGHTDATA_COLLECTOR_ID` | Future (v0.2) |
+* **Self-Healing Demo Walkthrough**: Check out [`docs/heal-demo.md`](docs/heal-demo.md) to learn how to trigger simulated or real selector failures.
+* **Architecture Deep-Dive**: See [`docs/architecture.md`](docs/architecture.md) for full database schemas and swappable mode details.
+* **Vercel Deployment Guide**: Detailed in [`docs/deployment.md`](docs/deployment.md).
+* **GitHub Actions Secret Settings**: Detailed in [`docs/github-secrets-setup.md`](docs/github-secrets-setup.md).
 
 ---
 
-## What you need to create/configure before going live
-
-1. **Supabase project** (free tier at [supabase.com](https://supabase.com))
-   - Run `supabase/schema.sql` in the SQL editor
-   - Copy Project URL + anon key into `.env` and `dashboard/.env.local`
-
-2. **Discord webhook** (optional) — for heal alerts
-   - Discord → Server Settings → Integrations → Webhooks → New Webhook → Copy URL
-   - Add to `.env` as `DISCORD_WEBHOOK_URL`
-
-3. **GitHub repository secrets** — for automated runs
-   - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, optionally `DISCORD_WEBHOOK_URL`
-
-4. **Vercel** (for dashboard deployment — future)
-   - `cd dashboard && vercel` — will prompt for project setup
-   - Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as environment variables in Vercel dashboard
-
-5. **Bright Data collector** (v0.2)
-   - Create a Scraper Studio collector for the target site
-   - Paste its ID into `BRIGHTDATA_COLLECTOR_ID`
-   - Replace the mock in `src/collector.js` with the real `bdata scraper run` call
-
----
-
-## What's next (v0.2+)
-
-- [ ] Choose target website
-- [ ] Create Bright Data Scraper Studio collector for that site
-- [ ] Replace mock in `src/collector.js` with real `bdata scraper run` call
-- [ ] Wire `BRIGHTDATA_COLLECTOR_ID` in GitHub secrets
-- [ ] Enable actual `bdata scraper heal` call in `src/heal-check.js`
-- [ ] Deploy dashboard to Vercel
-- [ ] Add price history charts
-
----
-
-## Free-tier notes
-
-Everything here runs on free tiers:
-
-| Service | Limit | Notes |
-|---|---|---|
-| **Supabase** | 500 MB DB | Plenty for this use case |
-| **GitHub Actions** | 2,000 min/month (public) | Nightly run ~1 min/day |
-| **Vercel** | 100 GB bandwidth | Sufficient for the dashboard |
-| **Bright Data** | Free trial credits | 💡 *Pay-per-result after trial — plan for costs in production* |
-
----
-
-*Built for [WeMakeDevs × Bright Data "Into the Scrape-Verse" hackathon](https://brightdata.com)*
+## 🏆 Hackathon Submission Info
+- **Project**: Undying Scraper
+- **Submission Date**: August 2026
+- **Event**: Bright Data Scraper Studio × WeMakeDevs "Into the Scrape-Verse" Hackathon

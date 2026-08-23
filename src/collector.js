@@ -48,7 +48,7 @@ async function runCollector() {
     // Uses the real Bright Data CLI wrapper.
     // collectorId and targetUrl are guaranteed non-null when isLive() is true.
     const collectorId = registry.getCollectorId();
-    const targetUrl   = registry.getTargetUrl();
+    const targetUrl = registry.getTargetUrl();
 
     console.log(`[collector] Mode: LIVE — running Bright Data collector ${collectorId}`);
 

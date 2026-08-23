@@ -29,7 +29,7 @@
 
 require('dotenv').config();
 
-const fs   = require('fs');
+const fs = require('fs');
 const path = require('path');
 const { createCollector } = require('../src/brightdata/client');
 const { CliNotAuthenticatedError, UnknownCliError } = require('../src/brightdata/errors');
@@ -74,8 +74,8 @@ See docs/how-to-add-target-site.md for the full walkthrough.
 // ─── .env writer ─────────────────────────────────────────────────────────────
 
 const ROOT = path.resolve(__dirname, '..');
-const ENV_FILE     = path.join(ROOT, '.env');
-const ENV_EXAMPLE  = path.join(ROOT, '.env.example');
+const ENV_FILE = path.join(ROOT, '.env');
+const ENV_EXAMPLE = path.join(ROOT, '.env.example');
 
 /**
  * Write (or update) BRIGHTDATA_COLLECTOR_ID and TARGET_URL in .env.

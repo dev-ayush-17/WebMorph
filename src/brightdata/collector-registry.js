@@ -44,7 +44,7 @@ function _init() {
   if (_mode !== null) return; // already initialised
 
   _collectorId = process.env.BRIGHTDATA_COLLECTOR_ID ?? null;
-  _targetUrl   = process.env.TARGET_URL ?? null;
+  _targetUrl = process.env.TARGET_URL ?? null;
 
   const bothSet = Boolean(_collectorId && _targetUrl);
 
@@ -59,11 +59,13 @@ function _init() {
     // Log exactly which variables are missing so the operator knows what to add
     const missing = [];
     if (!_collectorId) missing.push('BRIGHTDATA_COLLECTOR_ID');
-    if (!_targetUrl)   missing.push('TARGET_URL');
+    if (!_targetUrl) missing.push('TARGET_URL');
 
     console.log('[collector-registry] Mode: MOCK (falling back to mock data source)');
     console.log(`[collector-registry]   Missing env vars: ${missing.join(', ')}`);
-    console.log('[collector-registry]   Set both to switch to live scraping — no code change needed.');
+    console.log(
+      '[collector-registry]   Set both to switch to live scraping — no code change needed.'
+    );
   }
 }
 

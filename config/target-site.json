@@ -1,0 +1,19 @@
+{
+  "_comment": "Raajkart College Books — Physics category. Collector created 2026-08-22 via bdata scraper create.",
+  "site_name": "Raajkart — College Books (Physics)",
+  "collector_id": "c_mt4qg4m3ri0w861pe",
+  "target_url": "https://raajkart.com/books/college-books.html?c2c_college_books=7003",
+  "category": "Physics books",
+  "expected_item_count": 73,
+  "currency": "INR",
+  "fields_extracted": [
+    "product_name",
+    "price",
+    "currency",
+    "in_stock",
+    "product_url",
+    "scraped_at"
+  ],
+  "scraper_create_command": "bdata scraper create \"https://raajkart.com/books/college-books.html?c2c_college_books=7003\" \"For each book listing on the page, extract: product_name (book title as string), price (special/discounted price as a number, no currency symbol), currency (always 'INR' as string), in_stock (boolean, true if no Out of stock label is visible), product_url (the full URL of the book's detail page as string), scraped_at (current ISO timestamp as string).\" --name undying-scraper-raajkart-physics",
+  "notes": "Prices on site are shown as 'Special Price Rs X.XX' with a struck-through original price and a discount percentage. The special price is extracted as the canonical price. 'Out of stock' text is shown as plain text under items with no stock."
+}
