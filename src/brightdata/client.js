@@ -139,10 +139,10 @@ function classifyError(rawErr, collectorId) {
 async function createCollector(url, description, options = {}) {
   const exec = options._exec ?? defaultExec;
 
-  // Sanitize description to avoid shell injection — wrap in single quotes
-  // and escape any single quotes within the description itself
-  const safeDesc = description.replace(/'/g, "'\\''");
-  const cmd = `bdata scraper create "${url}" '${safeDesc}'`;
+  // Sanitize description to avoid shell injection — wrap in double quotes
+  // and escape any double quotes within the description itself
+  const safeDesc = description.replace(/"/g, '\\"');
+  const cmd = `bdata scraper create "${url}" "${safeDesc}"`;
 
   console.log(`[brightdata] Running: ${cmd}`);
 
@@ -240,8 +240,8 @@ async function runCollector(collectorId, url, options = {}) {
  */
 async function healCollector(collectorId, whatBroke, options = {}) {
   const exec = options._exec ?? defaultExec;
-  const safeDesc = whatBroke.replace(/'/g, "'\\''");
-  const cmd = `bdata scraper heal ${collectorId} '${safeDesc}'`;
+  const safeDesc = whatBroke.replace(/"/g, '\\"');
+  const cmd = `bdata scraper heal ${collectorId} "${safeDesc}"`;
 
   console.log(`[brightdata] Running: ${cmd}`);
 

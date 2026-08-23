@@ -234,6 +234,17 @@ async function triggerRealHeal(description, errorType, options = {}) {
 async function checkResult(collectorResult, options = {}) {
   const live = registry.isLive();
 
+  // ── Error object (e.g. collector run crashed) ──────────────────────────────
+  if (collectorResult instanceof Error) {
+    const description = `Collector failed: ${collectorResult.message}`;
+    const errorType = classifyErrorTypeFromException(collectorResult);
+    if (!live) {
+      return { healthy: false, products: [], healEvents: [triggerWouldHeal(description)] };
+    }
+    const { healEvent, retryProducts } = await triggerRealHeal(description, errorType, options);
+    return { healthy: retryProducts.length > 0, products: retryProducts, healEvents: [healEvent] };
+  }
+
   // ── Non-array ─────────────────────────────────────────────────────────────
   if (!Array.isArray(collectorResult)) {
     const description = `Collector returned non-array (got ${typeof collectorResult})`;

@@ -270,6 +270,13 @@ async function runTests() {
     assert.strictEqual(result.healEvents[0].heal_method, 'simulated');
   });
 
+  await test('Error input triggers simulated heal event', async () => {
+    const result = await checkResult(new Error('Mock run failed'));
+    assert.strictEqual(result.healthy, false);
+    assert.strictEqual(result.healEvents[0].heal_method, 'simulated');
+    assert.ok(result.healEvents[0].description.includes('Mock run failed'));
+  });
+
   await test('partial valid results: healthy=true, only valid products returned, error_type=type_mismatch', async () => {
     const broken = makeProduct({ price: 'not-a-number', product_url: 'https://example.com/bad' });
     const good = makeProduct({ product_url: 'https://example.com/good' });
@@ -335,6 +342,17 @@ async function runTests() {
       _noDelay: true,
     });
     assert.strictEqual(result.healEvents[0].resolved, false);
+  });
+
+  await test('live: Error input triggers real heal + succeeds on retry', async () => {
+    const result = await checkResult(new Error('CLI extraction failed'), {
+      _healCollector: async () => {},
+      _runCollector: async () => [goodProduct],
+      _noDelay: true,
+    });
+    assert.strictEqual(result.healEvents[0].resolved, true);
+    assert.strictEqual(result.healEvents[0].heal_method, 'real');
+    assert.strictEqual(result.products.length, 1);
   });
 
   // Restore

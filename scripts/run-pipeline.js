@@ -270,7 +270,13 @@ async function main() {
   try {
     // 2. Collect data
     console.log('[pipeline] → Running collector...');
-    const rawResult = await runCollector();
+    let rawResult;
+    try {
+      rawResult = await runCollector();
+    } catch (err) {
+      console.warn(`[pipeline] ⚠  Collector run failed: ${err.message}`);
+      rawResult = err;
+    }
 
     // 3. Heal-check (may trigger real heal + retry in live mode)
     console.log('[pipeline] → Running heal-check...');
