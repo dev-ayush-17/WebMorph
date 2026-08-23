@@ -2,8 +2,7 @@
 
 A resilient, production-ready web scraping pipeline that heals itself when websites change. Built for the **Bright Data Scraper Studio × WeMakeDevs "Into the Scrape-Verse"** Hackathon.
 
-> **Live Demo Dashboard:** [[PENDING VERCEL DEPLOYMENT]](https://undying-scraper-dashboard.vercel.app)  
-> **Nightly Run Pipeline Status:** [![WebMorph Pipeline](https://github.com/dev-ayush-17/WebMorph/actions/workflows/pipeline.yml/badge.svg)](https://github.com/dev-ayush-17/WebMorph/actions/workflows/pipeline.yml)
+> **Live Demo Dashboard:** https://web-morph-ruby.vercel.app/ 
 
 ---
 
