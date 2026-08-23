@@ -1,6 +1,6 @@
 # Final Setup Guide
 
-This document lists the exact remaining manual steps required to take "Undying Scraper" from its current codebase to a fully live, deployed state for the hackathon submission.
+This document lists the exact remaining manual steps required to take "WebMorph" from its current codebase to a fully live, deployed state for the hackathon submission.
 
 Please execute these steps in exactly this order.
 

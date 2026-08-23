@@ -1,7 +1,7 @@
 /**
  * tests/pipeline-integration.test.js
  *
- * Integration-style tests for the Undying Scraper pipeline.
+ * Integration-style tests for the WebMorph pipeline.
  *
  * Covers:
  *   1. Diff module: new products, changed prices, stock flips, summary counts

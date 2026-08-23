@@ -36,9 +36,9 @@ export default async function DashboardPage() {
       {/* ── Topbar ─────────────────────────────────────────────────── */}
       <header className="page-topbar">
         <div className="brand">
-          <div className="brand-icon" aria-hidden="true">🕷</div>
-          <span className="brand-name">Undying Scraper</span>
-          <span className="brand-version">v0.3</span>
+          <div className="brand-icon" aria-hidden="true">🌀</div>
+          <span className="brand-name">WebMorph</span>
+          <span className="brand-version">v1.0</span>
         </div>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -160,6 +160,46 @@ export default async function DashboardPage() {
 
       {/* ── Main content ───────────────────────────────────────────── */}
       <main className="page-main">
+        {/* ── Hero Section ─────────────────────────────────────────── */}
+        <section className="hero-section" aria-labelledby="hero-heading">
+          <div className="hero-glow" />
+          <div className="hero-content">
+            <div className="hero-badge">Bright Data Scraper Studio × WeMakeDevs Hackathon</div>
+            <h1 id="hero-heading" className="hero-title">WebMorph</h1>
+            <p className="hero-tagline">
+              Autonomous, self-healing web intelligence that morphs when website structures change.
+            </p>
+            <p className="hero-desc">
+              WebMorph is a resilient, production-ready web scraping pipeline that monitors college textbook listings on 
+              <strong> Raajkart.com</strong>. Using a custom client-side orchestration harness over Bright Data's AI-powered Scraper Studio, 
+              WebMorph automatically detects field validation failures, triggers serverless scraper healing in the cloud, 
+              retries the runs, and pushes live diagnostics to Discord.
+            </p>
+            <div className="hero-features">
+              <div className="feature-card">
+                <span className="feature-emoji">🛡️</span>
+                <h4>Schema Data Contract</h4>
+                <p>Enforces strict types for name, price, INR currency, stock, URL, and timestamp.</p>
+              </div>
+              <div className="feature-card">
+                <span className="feature-emoji">🔧</span>
+                <h4>Automated AI Healing</h4>
+                <p>Detects drifts and programmatically triggers Bright Data CLI heals without downtime.</p>
+              </div>
+              <div className="feature-card">
+                <span className="feature-emoji">📈</span>
+                <h4>Price & Stock Diff</h4>
+                <p>Compares runs against prior Supabase snapshots to detect delta changes and stock flips.</p>
+              </div>
+              <div className="feature-card">
+                <span className="feature-emoji">📢</span>
+                <h4>Diagnostic Alerts</h4>
+                <p>Fires rich Discord embeds for immediate visibility on healed or unresolved exceptions.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {!configured && (
           <div className="dev-banner" role="status">
             <span>⚡</span>

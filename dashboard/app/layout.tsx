@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Undying Scraper — Price & Stock Monitor',
+  title: 'WebMorph — Price & Stock Monitor',
   description:
     'Self-healing product price and stock tracker. Live data sourced via Bright Data Scraper Studio, stored in Supabase, and monitored for extraction failures.',
   keywords: ['price tracker', 'stock monitor', 'bright data', 'scraper', 'supabase'],

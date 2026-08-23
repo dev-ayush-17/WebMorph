@@ -1,7 +1,7 @@
 /**
  * scripts/run-pipeline.js  (v0.3)
  *
- * Main orchestration entry point for Undying Scraper.
+ * Main orchestration entry point for WebMorph.
  *
  * v0.3 additions:
  *   - Fetches prior snapshots from Supabase before writing, for price/stock diff
@@ -74,11 +74,11 @@ async function sendDiscordAlert(healEvents, runId, diffSummary) {
       { name: 'Duration', value: `${evt.duration_ms ?? 0}ms`, inline: true },
       { name: 'Time', value: evt.timestamp, inline: false },
     ],
-    footer: { text: 'Undying Scraper — self-healing pipeline' },
+    footer: { text: 'WebMorph — self-healing pipeline' },
   }));
 
   const payload = {
-    username: 'Undying Scraper',
+    username: 'WebMorph',
     avatar_url: 'https://em-content.zobj.net/source/twitter/376/spider_1f577-fe0f.png',
     embeds,
   };
@@ -251,7 +251,7 @@ async function main() {
 
   console.log('');
   console.log('═══════════════════════════════════════════════════════════');
-  console.log('  Undying Scraper — Pipeline Run');
+  console.log('  WebMorph — Pipeline Run');
   console.log(`  Run ID: ${runId}`);
   console.log('═══════════════════════════════════════════════════════════');
   console.log('');

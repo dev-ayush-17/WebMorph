@@ -1,9 +1,9 @@
-# 🕷 Undying Scraper — Self-Healing Price & Stock Tracker
+# 🌀 WebMorph — Autonomous Self-Healing Price & Stock Tracker
 
 A resilient, production-ready web scraping pipeline that heals itself when websites change. Built for the **Bright Data Scraper Studio × WeMakeDevs "Into the Scrape-Verse"** Hackathon.
 
 > **Live Demo Dashboard:** [[PENDING VERCEL DEPLOYMENT]](https://undying-scraper-dashboard.vercel.app)  
-> **Nightly Run Pipeline Status:** [![Undying Scraper Pipeline](https://github.com/dev-ayush-17/WebMorph/actions/workflows/pipeline.yml/badge.svg)](https://github.com/dev-ayush-17/WebMorph/actions/workflows/pipeline.yml)
+> **Nightly Run Pipeline Status:** [![WebMorph Pipeline](https://github.com/dev-ayush-17/WebMorph/actions/workflows/pipeline.yml/badge.svg)](https://github.com/dev-ayush-17/WebMorph/actions/workflows/pipeline.yml)
 
 ---
 
@@ -11,7 +11,7 @@ A resilient, production-ready web scraping pipeline that heals itself when websi
 
 Most price and stock trackers fail silently when target websites undergo structural changes or redesigns. A broken CSS selector results in empty datasets or corrupted null entries, remaining broken until a developer manually patches and redeploys the code. 
 
-**Undying Scraper** eliminates this single point of failure. It acts as an autonomous data pipeline that monitors textbook listings on **Raajkart.com**. If a markup change breaks the extraction schema, Undying Scraper:
+**WebMorph** eliminates this single point of failure. It acts as an autonomous data pipeline that monitors textbook listings on **Raajkart.com**. If a markup change breaks the extraction schema, WebMorph:
 1. **Detects** the validation failure instantly.
 2. **Triggers** Bright Data's AI-powered self-healing engine to analyze the page and fix selectors in place.
 3. **Retries** the execution to save healthy data to a Supabase database.
@@ -64,7 +64,7 @@ Most price and stock trackers fail silently when target websites undergo structu
 
 ## ⚡ The Key Differentiator: Real Self-Healing
 
-Unlike simple monitoring scripts, Undying Scraper implements a **real, functional self-healing feedback loop**. By leveraging the `@brightdata/cli` wrapper, our Node orchestration client programmatically interacts with Bright Data's Scraper Studio API. When a structural page break is detected, the pipeline automatically submits the broken DOM to the AI compiler to re-target the elements, updating the scraper configuration in real time without human intervention.
+Unlike simple monitoring scripts, WebMorph implements a **real, functional self-healing feedback loop**. By leveraging the `@brightdata/cli` wrapper, our Node orchestration client programmatically interacts with Bright Data's Scraper Studio API. When a structural page break is detected, the pipeline automatically submits the broken DOM to the AI compiler to re-target the elements, updating the scraper configuration in real time without human intervention.
 
 ---
 
@@ -141,6 +141,6 @@ Open [http://localhost:3000](http://localhost:3000) to view the monitoring inter
 ---
 
 ## 🏆 Hackathon Submission Info
-- **Project**: Undying Scraper
+- **Project**: WebMorph
 - **Submission Date**: August 2026
 - **Event**: Bright Data Scraper Studio × WeMakeDevs "Into the Scrape-Verse" Hackathon
