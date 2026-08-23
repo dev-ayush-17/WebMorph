@@ -47,6 +47,7 @@ jobs:
           SUPABASE_ANON_KEY:         ${{ secrets.SUPABASE_ANON_KEY }}
           DISCORD_WEBHOOK_URL:       ${{ secrets.DISCORD_WEBHOOK_URL }}
           BRIGHTDATA_COLLECTOR_ID:   ${{ secrets.BRIGHTDATA_COLLECTOR_ID }}
+          TARGET_URL:                ${{ secrets.TARGET_URL }}
           # Propagate manual dry_run input if set
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
         run: node scripts/run-pipeline.js
